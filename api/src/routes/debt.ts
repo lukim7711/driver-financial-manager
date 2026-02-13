@@ -60,46 +60,6 @@ interface ScheduleInput {
   amount: number
 }
 
-function autoGenerateSchedules(
-  dueDay: number,
-  monthlyAmount: number,
-  totalInstallments: number,
-  totalOriginal: number
-): ScheduleInput[] {
-  const items: ScheduleInput[] = []
-  const now = new Date()
-  const offset = 7 * 60
-  const local = new Date(
-    now.getTime() + offset * 60 * 1000
-  )
-  let year = local.getFullYear()
-  let month = local.getMonth()
-  let remaining = totalOriginal
-
-  for (let i = 0; i < totalInstallments; i++) {
-    const day = Math.min(
-      dueDay,
-      new Date(year, month + 1, 0).getDate()
-    )
-    const dd = String(day).padStart(2, '0')
-    const mm = String(month + 1).padStart(2, '0')
-    const dueDate = `${year}-${mm}-${dd}`
-    const isLast = i === totalInstallments - 1
-    const amt = isLast
-      ? remaining
-      : Math.min(monthlyAmount, remaining)
-    remaining -= amt
-
-    items.push({ due_date: dueDate, amount: amt })
-    month++
-    if (month > 11) {
-      month = 0
-      year++
-    }
-  }
-  return items
-}
-
 // GET /api/debts
 route.get('/', async (c) => {
   try {
@@ -231,7 +191,7 @@ route.get('/', async (c) => {
   }
 })
 
-// POST /api/debts — unified create
+// POST /api/debts — unified create (v4)
 route.post('/', async (c) => {
   try {
     const body = await c.req.json<{
@@ -243,6 +203,7 @@ route.post('/', async (c) => {
       late_fee_type?: string
       late_fee_rate?: number
       note?: string
+      debt_type?: string
       schedules?: ScheduleInput[]
     }>()
 
@@ -281,6 +242,63 @@ route.post('/', async (c) => {
       )
     }
 
+    const lateFeeType =
+      body.late_fee_type === 'pct_daily'
+        ? 'pct_daily'
+        : 'pct_monthly'
+    const lateFeeRate =
+      typeof body.late_fee_rate === 'number' &&
+      body.late_fee_rate >= 0
+        ? body.late_fee_rate
+        : 0
+    const note = body.note?.trim() ?? ''
+
+    // Mode: record (catat saja, no schedules)
+    if (body.debt_type === 'record') {
+      const id = generateId('debt')
+      const createdAt = getNowISO()
+      const db = getDB(c.env)
+
+      await queryDB(
+        db,
+        `INSERT INTO debts
+          (id, platform, total_original,
+           total_remaining, monthly_installment,
+           due_day, late_fee_type, late_fee_rate,
+           total_installments, paid_installments,
+           is_deleted, created_at, debt_type, note)
+         VALUES (?,?,?,?,0,0,?,?,0,0,0,?,?,?)`,
+        [
+          id,
+          body.platform.trim(),
+          body.total_original,
+          body.total_original,
+          lateFeeType,
+          lateFeeRate,
+          createdAt,
+          'record',
+          note,
+        ]
+      )
+
+      return c.json<
+        ApiResponse<{
+          id: string
+          platform: string
+        }>
+      >(
+        {
+          success: true,
+          data: {
+            id,
+            platform: body.platform.trim(),
+          },
+        },
+        201
+      )
+    }
+
+    // Mode: with schedules
     let scheduleItems: ScheduleInput[]
 
     if (
@@ -288,7 +306,6 @@ route.post('/', async (c) => {
       Array.isArray(body.schedules) &&
       body.schedules.length > 0
     ) {
-      // Custom schedules from frontend
       for (const s of body.schedules) {
         if (
           !s.due_date ||
@@ -335,73 +352,30 @@ route.post('/', async (c) => {
       }
       scheduleItems = body.schedules
     } else {
-      // Auto-generate from shortcut fields
-      const monthly =
-        body.monthly_installment ?? 0
-      const dueDay = body.due_day ?? 1
-      const count =
-        body.total_installments ?? 1
-
-      if (
-        !Number.isInteger(monthly) ||
-        monthly <= 0
-      ) {
-        return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error:
-              'Cicilan bulanan harus > 0 atau sediakan schedules[]',
-          },
-          400
-        )
-      }
-      if (dueDay < 1 || dueDay > 31) {
-        return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Tgl jatuh tempo 1-31',
-          },
-          400
-        )
-      }
-      if (count < 1 || count > 120) {
-        return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Jumlah cicilan 1-120',
-          },
-          400
-        )
-      }
-
-      scheduleItems = autoGenerateSchedules(
-        dueDay,
-        monthly,
-        count,
-        body.total_original
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error:
+            'Sediakan schedules[] atau gunakan debt_type=record',
+        },
+        400
       )
     }
 
-    const lateFeeType =
-      body.late_fee_type === 'pct_daily'
-        ? 'pct_daily'
-        : 'pct_monthly'
-    const lateFeeRate =
-      typeof body.late_fee_rate === 'number' &&
-      body.late_fee_rate >= 0
-        ? body.late_fee_rate
-        : 0
-    const note = body.note?.trim() ?? ''
     const firstDueDay = scheduleItems[0]
       ? parseInt(
           scheduleItems[0].due_date.slice(8, 10),
           10
         )
-      : body.due_day ?? 1
+      : 1
     const monthlyEst =
       body.monthly_installment ??
       scheduleItems[0]?.amount ??
       0
+    const debtType =
+      scheduleItems.length === 1
+        ? 'simple'
+        : 'installment'
 
     const id = generateId('debt')
     const createdAt = getNowISO()
@@ -427,9 +401,7 @@ route.post('/', async (c) => {
         lateFeeRate,
         scheduleItems.length,
         createdAt,
-        scheduleItems.length === 1
-          ? 'simple'
-          : 'installment',
+        debtType,
         note,
       ]
     )
@@ -851,29 +823,106 @@ route.post('/:id/pay', async (c) => {
   try {
     const debtId = c.req.param('id')
     const body = await c.req.json<{
-      schedule_id: string
+      schedule_id?: string
       amount: number
       is_full_payment?: boolean
     }>()
-    const { schedule_id, amount } = body
+    const { amount } = body
 
-    if (!schedule_id || !amount || amount <= 0) {
+    if (!amount || amount <= 0) {
       return c.json<ApiResponse<never>>(
         {
           success: false,
-          error:
-            'schedule_id dan amount wajib, amount > 0',
+          error: 'amount wajib > 0',
         },
         400
       )
     }
 
     const db = getDB(c.env)
+    const debtRows = await queryDB(
+      db,
+      `SELECT * FROM debts
+       WHERE id = ?
+         AND (is_deleted = 0
+              OR is_deleted IS NULL)`,
+      [debtId]
+    )
+    if (debtRows.length === 0) {
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: 'Hutang tidak ditemukan',
+        },
+        404
+      )
+    }
+    const debt = debtRows[0]!
+    const isRecord =
+      String(debt.debt_type) === 'record'
+    const today = getTodayISO()
+    const createdAt = getNowISO()
+    const txId = crypto.randomUUID()
+
+    // Record mode: no schedule, just reduce remaining
+    if (isRecord || !body.schedule_id) {
+      const rem =
+        Number(debt.total_remaining) || 0
+      if (amount > rem) {
+        return c.json<ApiResponse<never>>(
+          {
+            success: false,
+            error: `Maks: Rp ${rem.toLocaleString('id-ID')}`,
+          },
+          400
+        )
+      }
+      await queryDB(
+        db,
+        `INSERT INTO transactions
+          (id, created_at, type, amount,
+           category, note, source,
+           debt_id, is_deleted)
+         VALUES (?,?,'debt_payment',?,
+                 'debt',?,'manual',?,0)`,
+        [
+          txId,
+          createdAt,
+          amount,
+          `Bayar ${String(debt.platform)}`,
+          debtId,
+        ]
+      )
+      await queryDB(
+        db,
+        `UPDATE debts
+         SET total_remaining =
+               total_remaining - ?
+         WHERE id = ?`,
+        [amount, debtId]
+      )
+      const newRem = rem - amount
+      return c.json<ApiResponse<unknown>>(
+        {
+          success: true,
+          data: {
+            debt_id: debtId,
+            platform: String(debt.platform),
+            paid_amount: amount,
+            remaining: newRem,
+            is_fully_paid: newRem <= 0,
+          },
+        },
+        201
+      )
+    }
+
+    // Schedule mode
     const schedRows = await queryDB(
       db,
       `SELECT * FROM debt_schedule
        WHERE id = ?`,
-      [schedule_id]
+      [body.schedule_id]
     )
     if (schedRows.length === 0) {
       return c.json<ApiResponse<never>>(
@@ -914,9 +963,6 @@ route.post('/:id/pay', async (c) => {
     const newPaidAmount = prevPaid + amount
     const nowFull = newPaidAmount >= schedAmount
     const newStatus = nowFull ? 'paid' : 'unpaid'
-    const today = getTodayISO()
-    const createdAt = getNowISO()
-    const txId = crypto.randomUUID()
 
     await queryDB(
       db,
@@ -931,7 +977,7 @@ route.post('/:id/pay', async (c) => {
         txId,
         createdAt,
         amount,
-        `Bayar ${String(sched.debt_id)}`,
+        `Bayar ${String(debt.platform)}`,
         debtId,
       ]
     )
@@ -945,7 +991,7 @@ route.post('/:id/pay', async (c) => {
         newStatus,
         nowFull ? today : null,
         newPaidAmount,
-        schedule_id,
+        body.schedule_id,
       ]
     )
     await queryDB(
@@ -959,25 +1005,22 @@ route.post('/:id/pay', async (c) => {
       [amount, nowFull ? 1 : 0, debtId]
     )
 
-    const debtRows = await queryDB(
+    const updatedDebt = await queryDB(
       db,
       `SELECT * FROM debts WHERE id = ?`,
       [debtId]
     )
-    const debt = debtRows[0]
-    const newRemaining = debt
-      ? Number(debt.total_remaining) || 0
+    const ud = updatedDebt[0]
+    const newRemaining = ud
+      ? Number(ud.total_remaining) || 0
       : 0
-    const platform = debt
-      ? String(debt.platform)
-      : debtId
 
     return c.json<ApiResponse<unknown>>(
       {
         success: true,
         data: {
           debt_id: debtId,
-          platform,
+          platform: String(debt.platform),
           paid_amount: amount,
           remaining: newRemaining,
           schedule_status: newStatus,
