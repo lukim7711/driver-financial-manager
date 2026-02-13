@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router'
 import { CategoryGrid, INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../components/CategoryGrid'
 import { AmountInput } from '../components/AmountInput'
 import { apiClient } from '../lib/api'
+import { useToast } from '../components/Toast'
 
 type TxType = 'income' | 'expense'
 type Step = 1 | 2 | 3
 
 export function QuickInput() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [step, setStep] = useState<Step>(1)
   const [txType, setTxType] = useState<TxType | null>(null)
   const [category, setCategory] = useState<string | null>(null)
   const [amount, setAmount] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const getCategoryLabel = useCallback(() => {
     if (!category || !txType) return ''
@@ -50,28 +51,23 @@ export function QuickInput() {
   const handleSave = async () => {
     if (!txType || !category || !amount || saving) return
     setSaving(true)
-    setError(null)
 
-    try {
-      const res = await apiClient<unknown>('/api/transactions', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: txType,
-          amount,
-          category,
-          note: note || '',
-          source: 'manual',
-        }),
-      })
+    const res = await apiClient<unknown>('/api/transactions', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: txType,
+        amount,
+        category,
+        note: note || '',
+        source: 'manual',
+      }),
+    })
 
-      if (res.success) {
-        void navigate('/')
-      } else {
-        setError(res.error || 'Gagal menyimpan')
-        setSaving(false)
-      }
-    } catch {
-      setError('Koneksi gagal, coba lagi')
+    if (res.success) {
+      toast.success('Transaksi tersimpan')
+      void navigate('/')
+    } else {
+      toast.error(res.error)
       setSaving(false)
     }
   }
@@ -85,7 +81,7 @@ export function QuickInput() {
           onClick={handleBack}
           className="tap-highlight-none text-sm text-gray-500"
         >
-          ← {step === 1 ? 'Kembali' : 'Kembali'}
+          {'\u2190'} Kembali
         </button>
         <StepIndicator current={step} />
       </div>
@@ -94,7 +90,7 @@ export function QuickInput() {
       {step === 1 && (
         <div className="space-y-4">
           <h1 className="text-center text-lg font-bold text-gray-800">
-            ✏️ Catat Transaksi
+            {'\u270f\ufe0f'} Catat Transaksi
           </h1>
           <div className="grid grid-cols-2 gap-4">
             <button
@@ -102,7 +98,7 @@ export function QuickInput() {
               onClick={() => handleTypeSelect('income')}
               className="tap-highlight-none rounded-2xl bg-emerald-50 border-2 border-emerald-200 p-6 text-center transition-all active:scale-95"
             >
-              <span className="text-3xl">💰</span>
+              <span className="text-3xl">{'\ud83d\udcb0'}</span>
               <p className="mt-2 font-bold text-emerald-700">MASUK</p>
             </button>
             <button
@@ -110,7 +106,7 @@ export function QuickInput() {
               onClick={() => handleTypeSelect('expense')}
               className="tap-highlight-none rounded-2xl bg-red-50 border-2 border-red-200 p-6 text-center transition-all active:scale-95"
             >
-              <span className="text-3xl">💸</span>
+              <span className="text-3xl">{'\ud83d\udcb8'}</span>
               <p className="mt-2 font-bold text-red-700">KELUAR</p>
             </button>
           </div>
@@ -122,7 +118,7 @@ export function QuickInput() {
               onClick={() => void navigate('/ocr')}
               className="tap-highlight-none w-full rounded-2xl bg-purple-50 border-2 border-purple-200 p-4 text-center transition-all active:scale-95"
             >
-              <span className="text-2xl">📷</span>
+              <span className="text-2xl">{'\ud83d\udcf7'}</span>
               <p className="mt-1 text-sm font-bold text-purple-700">Foto Struk (OCR)</p>
               <p className="text-xs text-purple-400">Upload struk, otomatis tercatat</p>
             </button>
@@ -134,7 +130,7 @@ export function QuickInput() {
       {step === 2 && txType && (
         <div className="space-y-4">
           <h1 className="text-center text-lg font-bold text-gray-800">
-            {txType === 'income' ? '💰 Pemasukan' : '💸 Pengeluaran'} — Kategori
+            {txType === 'income' ? '\ud83d\udcb0 Pemasukan' : '\ud83d\udcb8 Pengeluaran'} {'\u2014'} Kategori
           </h1>
           <CategoryGrid type={txType} onSelect={handleCategorySelect} />
         </div>
@@ -144,7 +140,7 @@ export function QuickInput() {
       {step === 3 && category && (
         <div className="space-y-4">
           <h1 className="text-center text-lg font-bold text-gray-800">
-            {getCategoryLabel()} — Berapa?
+            {getCategoryLabel()} {'\u2014'} Berapa?
           </h1>
 
           <AmountInput
@@ -156,19 +152,12 @@ export function QuickInput() {
           {/* Note input */}
           <input
             type="text"
-            placeholder="📝 Catatan (opsional)"
+            placeholder="\ud83d\udcdd Catatan (opsional)"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={100}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 placeholder-gray-400 outline-none focus:border-emerald-300"
           />
-
-          {/* Error message */}
-          {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-center text-sm text-red-600">
-              {error}
-            </div>
-          )}
 
           {/* Save button */}
           <button
@@ -181,7 +170,7 @@ export function QuickInput() {
                 : 'bg-emerald-500 text-white shadow-lg active:bg-emerald-600'
             }`}
           >
-            {saving ? '⏳ Menyimpan...' : '✅ SIMPAN'}
+            {saving ? '\u23f3 Menyimpan...' : '\u2705 SIMPAN'}
           </button>
         </div>
       )}
