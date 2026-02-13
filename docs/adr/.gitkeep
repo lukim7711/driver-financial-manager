@@ -1,0 +1,10 @@
+# Architecture Decision Records (ADR)
+
+Folder ini akan berisi dokumentasi keputusan arsitektur penting.
+
+Naming convention: `ADR-{number}-{judul}.md`
+
+Contoh:
+- ADR-001-pilihan-database.md
+- ADR-002-authentication-strategy.md
+- ADR-003-deployment-platform.md

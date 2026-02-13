@@ -1,0 +1,10 @@
+# Feature Specifications
+
+Folder ini akan berisi spesifikasi detail untuk setiap fitur.
+
+Naming convention: `F{ID}-{nama-fitur}.md`
+
+Contoh:
+- F001-pencatatan-transaksi.md
+- F002-kategori-pengeluaran.md
+- F003-laporan-harian.md

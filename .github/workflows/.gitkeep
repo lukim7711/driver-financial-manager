@@ -1,0 +1,8 @@
+# GitHub Actions Workflows
+
+Folder ini akan berisi CI/CD workflows.
+
+Contoh workflows yang akan dibuat:
+- ci.yml - Continuous Integration (tests, linting)
+- deploy.yml - Deployment automation
+- pr-check.yml - Pull Request validation
