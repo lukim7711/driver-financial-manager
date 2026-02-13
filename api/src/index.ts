@@ -4,7 +4,7 @@ import { logger } from 'hono/logger'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
-  DB: DurableObjectNamespace<MoneyManagerDB>
+  DB: DurableObjectNamespace
   ENVIRONMENT?: string
   OCR_SPACE_API_KEY?: string
 }
@@ -22,17 +22,14 @@ app.use('*', async (c, next) => {
 // CORS middleware
 app.use('*', cors({
   origin: (origin) => {
-    // Allow localhost in development
     if (origin.includes('localhost:3000')) return origin
-    // Allow Cloudflare Pages preview and production
     if (origin.endsWith('.pages.dev')) return origin
-    // Reject others
     return null
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   maxAge: 86400,
-})
+}))
 
 // Health check
 app.get('/', (c) => {
@@ -47,26 +44,26 @@ app.get('/', (c) => {
   })
 })
 
-// Helper to get DO instance
-function getDB(c: { env: Bindings }) {
-  const id = c.env.DB.idFromName('default')
-  return c.env.DB.get(id)
+// Helper to get DO stub
+function _getDB(env: Bindings) {
+  const id = env.DB.idFromName('default')
+  return env.DB.get(id)
 }
 
-// API routes (stubs for now - will be expanded per feature)
-app.get('/api/transactions', async (c) => {
-  // TODO: Implement transaction query using getDB(c)
-  return c.json({ success: true, data: [] })
+// API routes (stubs — will be expanded per feature)
+app.get('/api/transactions', async (_c) => {
+  // TODO: Implement transaction query via DO
+  return _c.json({ success: true, data: [] })
 })
 
-app.get('/api/debts', async (c) => {
-  // TODO: Implement debts query using getDB(c)
-  return c.json({ success: true, data: [] })
+app.get('/api/debts', async (_c) => {
+  // TODO: Implement debts query via DO
+  return _c.json({ success: true, data: [] })
 })
 
-app.get('/api/dashboard', async (c) => {
-  // TODO: Implement dashboard aggregation using getDB(c)
-  return c.json({
+app.get('/api/dashboard', async (_c) => {
+  // TODO: Implement dashboard aggregation via DO
+  return _c.json({
     success: true,
     data: {
       today: { income: 0, expense: 0, profit: 0, budget_remaining: 0 },
@@ -75,9 +72,9 @@ app.get('/api/dashboard', async (c) => {
   })
 })
 
-app.get('/api/settings', async (c) => {
-  // TODO: Implement settings query using getDB(c)
-  return c.json({ success: true, data: {} })
+app.get('/api/settings', async (_c) => {
+  // TODO: Implement settings query via DO
+  return _c.json({ success: true, data: {} })
 })
 
 // 404 handler
@@ -87,7 +84,6 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-  console.error('API Error:', err)
   return c.json({
     success: false,
     error: c.env.ENVIRONMENT === 'production' ? 'Internal server error' : err.message,
