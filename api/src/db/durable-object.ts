@@ -29,13 +29,15 @@ export class MoneyManagerDB extends DurableObject<Env> {
     this.migrateBudgetRt()
     this.migrateDebtsColumns()
     this.migrateDailyBudgets()
+    this.migrateDebtTypeNote()
 
     this.initialized = true
   }
 
   private migrateBudgetRt() {
     const rtCursor = this.ctx.storage.sql.exec(
-      `SELECT value FROM settings WHERE key = 'budget_rt'`
+      `SELECT value FROM settings
+       WHERE key = 'budget_rt'`
     )
     const rtRow = [...rtCursor][0]
     if (!rtRow) return
@@ -43,78 +45,117 @@ export class MoneyManagerDB extends DurableObject<Env> {
     const rtValue = Number(rtRow.value) || 0
     if (rtValue <= 0) {
       this.ctx.storage.sql.exec(
-        `DELETE FROM settings WHERE key = 'budget_rt'`
+        `DELETE FROM settings
+         WHERE key = 'budget_rt'`
       )
       return
     }
 
     const existCursor = this.ctx.storage.sql.exec(
-      `SELECT id FROM monthly_expenses WHERE id = 'me-rt'`
+      `SELECT id FROM monthly_expenses
+       WHERE id = 'me-rt'`
     )
     const existRow = [...existCursor][0]
 
     if (!existRow) {
       this.ctx.storage.sql.exec(
         `INSERT INTO monthly_expenses
-          (id, name, emoji, amount, is_deleted, created_at)
-        VALUES
-          ('me-rt', 'RT/Rumah Tangga', '🏠', ?, 0,
-           '2026-02-12T00:00:00+07:00')`,
+          (id, name, emoji, amount,
+           is_deleted, created_at)
+         VALUES
+          ('me-rt', 'RT/Rumah Tangga', '🏠',
+           ?, 0, '2026-02-12T00:00:00+07:00')`,
         rtValue
       )
     }
 
     this.ctx.storage.sql.exec(
-      `DELETE FROM settings WHERE key = 'budget_rt'`
+      `DELETE FROM settings
+       WHERE key = 'budget_rt'`
     )
   }
 
   private migrateDebtsColumns() {
     try {
       this.ctx.storage.sql.exec(
-        `ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`
+        `ALTER TABLE debts
+         ADD COLUMN is_deleted INTEGER
+         NOT NULL DEFAULT 0`
       )
-    } catch { /* already exists */ }
+    } catch {
+      /* already exists */
+    }
 
     try {
       this.ctx.storage.sql.exec(
-        `ALTER TABLE debts ADD COLUMN created_at TEXT`
+        `ALTER TABLE debts
+         ADD COLUMN created_at TEXT`
       )
-    } catch { /* already exists */ }
+    } catch {
+      /* already exists */
+    }
   }
 
   private migrateDailyBudgets() {
     const keys = [
-      { key: 'budget_bbm', name: 'BBM', emoji: '⛽', fallback: 40000 },
-      { key: 'budget_makan', name: 'Makan', emoji: '🍜', fallback: 25000 },
-      { key: 'budget_rokok', name: 'Rokok', emoji: '🚭', fallback: 27000 },
-      { key: 'budget_pulsa', name: 'Pulsa', emoji: '📱', fallback: 5000 },
+      {
+        key: 'budget_bbm',
+        name: 'BBM',
+        emoji: '⛽',
+        fallback: 40000,
+      },
+      {
+        key: 'budget_makan',
+        name: 'Makan',
+        emoji: '🍜',
+        fallback: 25000,
+      },
+      {
+        key: 'budget_rokok',
+        name: 'Rokok',
+        emoji: '🚬',
+        fallback: 27000,
+      },
+      {
+        key: 'budget_pulsa',
+        name: 'Pulsa',
+        emoji: '📱',
+        fallback: 5000,
+      },
     ]
 
     const checkCursor = this.ctx.storage.sql.exec(
-      `SELECT COUNT(*) as count FROM daily_expenses`
+      `SELECT COUNT(*) as count
+       FROM daily_expenses`
     )
     const checkRow = [...checkCursor][0]
-    const existing = (checkRow?.count as number) || 0
+    const existing =
+      (checkRow?.count as number) || 0
     if (existing > 0) return
 
     const ts = '2026-02-12T00:00:00+07:00'
 
     for (const item of keys) {
       const valCursor = this.ctx.storage.sql.exec(
-        `SELECT value FROM settings WHERE key = ?`,
+        `SELECT value FROM settings
+         WHERE key = ?`,
         item.key
       )
       const valRow = [...valCursor][0]
       const amount = valRow
-        ? (Number(valRow.value) || item.fallback)
+        ? Number(valRow.value) || item.fallback
         : item.fallback
 
       this.ctx.storage.sql.exec(
         `INSERT INTO daily_expenses
-          (id, name, emoji, amount, is_deleted, created_at)
-        VALUES (?, ?, ?, ?, 0, ?)`,
-        `de-${item.key}`, item.name, item.emoji, amount, ts
+          (id, name, emoji, amount,
+           is_deleted, created_at)
+         VALUES (?, ?, ?, ?, 0, ?)`,
+        `de-${item.key}`,
+        item.name,
+        item.emoji,
+        amount,
+        ts
       )
     }
 
@@ -126,6 +167,28 @@ export class MoneyManagerDB extends DurableObject<Env> {
     }
   }
 
+  private migrateDebtTypeNote() {
+    try {
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE debts
+         ADD COLUMN debt_type TEXT
+         NOT NULL DEFAULT 'installment'`
+      )
+    } catch {
+      /* already exists */
+    }
+
+    try {
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE debts
+         ADD COLUMN note TEXT
+         NOT NULL DEFAULT ''`
+      )
+    } catch {
+      /* already exists */
+    }
+  }
+
   async fetch(request: Request): Promise<Response> {
     this.ensureInitialized()
 
@@ -133,20 +196,31 @@ export class MoneyManagerDB extends DurableObject<Env> {
     const path = url.pathname
 
     try {
-      if (path === '/query' && request.method === 'POST') {
-        const body = await request.json() as {
+      if (
+        path === '/query' &&
+        request.method === 'POST'
+      ) {
+        const body = (await request.json()) as {
           query: string
           params?: unknown[]
         }
         const { query, params = [] } = body
-        const cursor = this.ctx.storage.sql.exec(
-          query, ...params
-        )
+        const cursor =
+          this.ctx.storage.sql.exec(
+            query,
+            ...params
+          )
         const rows = [...cursor]
-        return Response.json({ success: true, data: rows })
+        return Response.json({
+          success: true,
+          data: rows,
+        })
       }
 
-      if (path === '/health' && request.method === 'GET') {
+      if (
+        path === '/health' &&
+        request.method === 'GET'
+      ) {
         return Response.json({
           success: true,
           data: {
@@ -157,16 +231,20 @@ export class MoneyManagerDB extends DurableObject<Env> {
       }
 
       return Response.json(
-        { success: false, error: 'Unknown endpoint' },
+        {
+          success: false,
+          error: 'Unknown endpoint',
+        },
         { status: 404 }
       )
     } catch (error) {
       return Response.json(
         {
           success: false,
-          error: error instanceof Error
-            ? error.message
-            : 'Database error',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Database error',
         },
         { status: 500 }
       )

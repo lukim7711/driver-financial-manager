@@ -6,7 +6,9 @@ import { PayDialog } from '../components/PayDialog'
 import { PaySuccess } from '../components/PaySuccess'
 import { AddDebtForm } from '../components/AddDebtForm'
 import { EditDebtDialog } from '../components/EditDebtDialog'
-import { DeleteDebtDialog } from '../components/DeleteDebtDialog'
+import {
+  DeleteDebtDialog,
+} from '../components/DeleteDebtDialog'
 import { BottomNav } from '../components/BottomNav'
 
 interface Schedule {
@@ -22,6 +24,7 @@ interface Schedule {
 interface Debt {
   id: string
   platform: string
+  debt_type?: string
   total_original: number
   total_remaining: number
   monthly_installment: number
@@ -31,6 +34,7 @@ interface Debt {
   total_installments: number
   paid_installments: number
   progress_percentage: number
+  note?: string
   next_schedule: Schedule | null
   schedules: Schedule[]
 }
@@ -53,26 +57,27 @@ interface PayResult {
 }
 
 export function Debts() {
-  const [data, setData] = useState<DebtData | null>(null)
+  const [data, setData] = useState<DebtData | null>(
+    null
+  )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [payTarget, setPayTarget] = useState<{
     debt: Debt
     schedule: Schedule
   } | null>(null)
-  const [payResult, setPayResult] = useState<PayResult | null>(
-    null
-  )
+  const [payResult, setPayResult] =
+    useState<PayResult | null>(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [editTarget, setEditTarget] = useState<Debt | null>(
-    null
-  )
-  const [deleteTarget, setDeleteTarget] = useState<Debt | null>(
-    null
-  )
+  const [editTarget, setEditTarget] =
+    useState<Debt | null>(null)
+  const [deleteTarget, setDeleteTarget] =
+    useState<Debt | null>(null)
 
   const fetchDebts = useCallback(async () => {
-    const res = await apiClient<DebtData>('/api/debts')
+    const res = await apiClient<DebtData>(
+      '/api/debts'
+    )
     if (res.success && res.data) setData(res.data)
     setLoading(false)
   }, [])
@@ -124,6 +129,9 @@ export function Debts() {
     total_installments: number
     late_fee_type: string
     late_fee_rate: number
+    debt_type?: string
+    due_date?: string
+    note?: string
   }) => {
     setSaving(true)
     const res = await apiClient<{ id: string }>(
@@ -181,7 +189,9 @@ export function Debts() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-400">Memuat data hutang...</p>
+        <p className="text-gray-400">
+          Memuat data hutang...
+        </p>
       </div>
     )
   }
@@ -203,7 +213,8 @@ export function Debts() {
   }
   const debts = data?.debts ?? []
   const allPaid =
-    summary.total_remaining <= 0 && summary.total_paid > 0
+    summary.total_remaining <= 0 &&
+    summary.total_paid > 0
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -219,7 +230,10 @@ export function Debts() {
           <div
             className="h-full rounded-full bg-emerald-400 transition-all duration-500"
             style={{
-              width: `${Math.min(summary.progress_percentage, 100)}%`,
+              width: `${Math.min(
+                summary.progress_percentage,
+                100
+              )}%`,
             }}
           />
         </div>
@@ -245,7 +259,10 @@ export function Debts() {
             debt={debt}
             onPay={() => handlePay(debt)}
             onEdit={() => setEditTarget(debt)}
-            onDelete={() => setDeleteTarget(debt)}
+            onDelete={() =>
+              setDeleteTarget(debt)
+            }
+            onRefresh={() => void fetchDebts()}
           />
         ))}
 
@@ -259,7 +276,7 @@ export function Debts() {
         )}
       </div>
 
-      {/* FAB: Add new debt */}
+      {/* FAB */}
       <button
         type="button"
         onClick={() => setShowAdd(true)}
@@ -290,8 +307,12 @@ export function Debts() {
       {deleteTarget && (
         <DeleteDebtDialog
           platform={deleteTarget.platform}
-          totalRemaining={deleteTarget.total_remaining}
-          onConfirm={() => void handleDeleteConfirm()}
+          totalRemaining={
+            deleteTarget.total_remaining
+          }
+          onConfirm={() =>
+            void handleDeleteConfirm()
+          }
           onCancel={() => setDeleteTarget(null)}
           loading={saving}
         />
