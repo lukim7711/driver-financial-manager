@@ -1,7 +1,7 @@
 # 🧭 AI-CONTEXT
 # Money Manager — AI Navigation Map
 
-> **Version:** 3.0  
+> **Version:** 4.0  
 > **Last Updated:** 2026-02-14  
 
 ---
@@ -37,18 +37,20 @@ Cloudflare Pages (React SPA)
    │ REST API calls
    ▼
 Cloudflare Workers (Hono API)
-   ├── /api/transactions    → CRUD transaksi
-   ├── /api/debts           → Status hutang + bayar
-   ├── /api/report          → Laporan harian/mingguan
-   ├── /api/ocr             → Proxy ke ocr.space
-   ├── /api/settings        → Budget preferences
-   └── /api/dashboard       → Aggregate home data + daily target
+   ├── /api/transactions      → CRUD transaksi
+   ├── /api/debts             → CRUD hutang + bayar cicilan
+   ├── /api/report            → Laporan harian/mingguan
+   ├── /api/ocr               → Proxy ke ocr.space
+   ├── /api/settings          → Budget preferences + target date
+   ├── /api/monthly-expenses  → CRUD biaya bulanan
+   └── /api/dashboard         → Aggregate home data + daily target
    │
    ▼
 Durable Objects (SQLite)
-   ├── debts            (pre-loaded 5 hutang)
-   ├── debt_schedule    (pre-loaded jadwal cicilan)
+   ├── debts            (pre-loaded + user-created)
+   ├── debt_schedule    (pre-loaded + auto-generated)
    ├── transactions     (runtime: user input)
+   ├── monthly_expenses (runtime: CRUD biaya bulanan)
    └── settings         (runtime: budget adjustable)
 ```
 
@@ -76,9 +78,9 @@ Durable Objects (SQLite)
 | `frontend/src/pages/Home.tsx` | Dashboard: summary + daily target + budget + alerts |
 | `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save. Also has OCR shortcut button. |
 | `frontend/src/pages/OcrUpload.tsx` | Upload struk foto → OCR → auto-parse |
-| `frontend/src/pages/Debts.tsx` | Status hutang + progress + tandai lunas |
+| `frontend/src/pages/Debts.tsx` | CRUD hutang + progress + bayar cicilan + FAB tambah |
 | `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat |
-| `frontend/src/pages/Settings.tsx` | Adjust budget harian + bulanan |
+| `frontend/src/pages/Settings.tsx` | Adjust budget harian + bulanan + target date |
 | `frontend/src/components/DailyTarget.tsx` | Target harian minimal: progress bar + gap + breakdown |
 | `frontend/src/components/SummaryCard.tsx` | Ringkasan pemasukan/pengeluaran/profit hari ini |
 | `frontend/src/components/BudgetBar.tsx` | Sisa budget harian (max pengeluaran) |
@@ -87,6 +89,10 @@ Durable Objects (SQLite)
 | `frontend/src/components/BottomNav.tsx` | Navigation bar: Home, Catat, Hutang, Laporan, Setting |
 | `frontend/src/components/DueAlert.tsx` | Alert jatuh tempo hutang |
 | `frontend/src/components/DebtProgress.tsx` | Progress bar total hutang |
+| `frontend/src/components/DebtCard.tsx` | Card hutang: detail + bayar + edit + hapus |
+| `frontend/src/components/AddDebtForm.tsx` | Bottom sheet form tambah hutang baru |
+| `frontend/src/components/EditDebtDialog.tsx` | Bottom sheet form edit hutang |
+| `frontend/src/components/DeleteDebtDialog.tsx` | Dialog konfirmasi hapus hutang |
 | `frontend/src/hooks/` | useApi, useTransactions, useDebts |
 | `frontend/src/lib/api.ts` | API client base |
 | `frontend/src/lib/format.ts` | Format Rupiah (Rp 50.000), tanggal |
@@ -100,14 +106,15 @@ Durable Objects (SQLite)
 |----------|---------|
 | `api/src/index.ts` | Worker entry + Hono app init + DO export |
 | `api/src/routes/transaction.ts` | CRUD /api/transactions |
-| `api/src/routes/debt.ts` | GET debts, POST pay |
+| `api/src/routes/debt.ts` | CRUD /api/debts + POST pay |
 | `api/src/routes/report.ts` | GET daily/weekly report |
 | `api/src/routes/ocr.ts` | POST image → ocr.space → parsed result |
 | `api/src/routes/settings.ts` | GET/PUT settings |
 | `api/src/routes/dashboard.ts` | GET dashboard aggregate + daily target calculation |
-| `api/src/db/durable-object.ts` | DO class: SQLite init, query methods |
-| `api/src/db/schema.sql` | Table definitions |
-| `api/src/db/seed.sql` | Pre-loaded hutang data (5 platform) |
+| `api/src/routes/monthly-expense.ts` | CRUD /api/monthly-expenses |
+| `api/src/db/durable-object.ts` | DO class: SQLite init, query methods, migrations |
+| `api/src/db/schema.ts` | Table definitions (SQL string) |
+| `api/src/db/seed.ts` | Pre-loaded hutang data (5 platform) |
 | `api/wrangler.toml` | CF Worker config: DO bindings, vars, secrets |
 
 ---
@@ -124,16 +131,18 @@ Durable Objects (SQLite)
 
 ### 5.2 Hutang
 - 5 hutang pre-loaded dari studi kasus (per 12 Feb 2026)
-- Setiap hutang punya jadwal cicilan detail per bulan
+- User bisa tambah hutang baru via FAB (+) di halaman Hutang
+- User bisa edit detail hutang (platform, total, cicilan, due_day, denda)
+- User bisa hapus hutang (soft delete: `is_deleted = 1`)
+- Saat tambah hutang, jadwal cicilan otomatis di-generate dari `due_day` + `total_installments`
+- Saat edit `total_original`, `total_remaining` di-recalculate (preserve paid amount)
 - "Tandai Lunas" = catat expense + update schedule status + update remaining
 - Denda dihitung berdasarkan tipe: `pct_monthly` (4-5%/bulan) atau `pct_daily` (0.25%/hari)
-- ⚠️ Hutang belum bisa CRUD (hanya read + pay). Lihat F012.
 
 ### 5.3 Budget
 - Budget harian: BBM, Makan, Rokok, Pulsa (adjustable via Settings)
-- Budget bulanan: RT (saat ini hardcode `budget_rt`, belum dinamis)
+- Budget bulanan: CRUD via Settings — nama, emoji, nominal (F013)
 - BudgetBar = budget harian + (bulanan ÷ hari di bulan ini) - pengeluaran hari ini
-- ⚠️ Biaya bulanan belum CRUD (hanya 1 item: RT). Lihat F013.
 
 ### 5.4 Target Harian Minimal (DT001)
 - **Formula:** `Target = Pengeluaran Harian + (Bulanan ÷ Hari di Bulan) + (Sisa Hutang ÷ Sisa Hari ke Target)`
@@ -146,9 +155,8 @@ Durable Objects (SQLite)
 
 ### 5.5 Target Lunas
 - Total hutang awal: Rp 8.851.200
-- Target: 13 April 2026 (2 bulan)
+- Target: editable di Settings (default 13 April 2026)
 - Progress = (total_original - total_remaining) / total_original × 100%
-- ⚠️ Target date belum bisa diubah dari UI. Lihat F014.
 
 ---
 
@@ -158,7 +166,8 @@ Durable Objects (SQLite)
 |------|--------|
 | v1.0.0 MVP (8 features) | ✅ SHIPPED |
 | v1.1.0 Daily Target + Hotfixes | ✅ SHIPPED |
-| v1.2.0 (planned) | ⬜ F012 + F013 + F014 |
+| v1.2.0 Monthly Expenses + Target Date | ✅ SHIPPED |
+| v1.3.0 Debt CRUD | ✅ SHIPPED |
 
 See `docs/PROGRESS.md` for detailed session logs and known issues.
 
@@ -168,9 +177,6 @@ See `docs/PROGRESS.md` for detailed session logs and known issues.
 
 | ID | Nama | Detail |
 |----|------|--------|
-| F012 | CRUD Hutang | POST/PUT/DELETE /api/debts — tambah, edit, hapus hutang dari UI |
-| F013 | Biaya Bulanan Dinamis | CRUD biaya bulanan di Settings: nama, icon/emoji, nominal. Semua item masuk ke kalkulasi Target Harian. Contoh: RT, Listrik, Air, WiFi. Saat ini hanya hardcode `budget_rt`. |
-| F014 | Edit Target Tanggal Lunas | Target date saat ini hardcode `2026-04-13`. Harus bisa diubah dari Settings. |
 | F009 | Ringkasan Mingguan | Weekly summary report |
 | F011 | Help/Onboarding | First-time user guide |
 
@@ -178,16 +184,10 @@ See `docs/PROGRESS.md` for detailed session logs and known issues.
 
 ## 8. Development Workflow
 
-### Build Order (Recommended for next features)
-
-1. **F013** — Biaya Bulanan Dinamis (unblocks accurate daily target)
-2. **F014** — Edit Target Tanggal (unblocks flexible planning)
-3. **F012** — CRUD Hutang (unblocks real-world usage)
-
 ### Per-Feature Branch Pattern
 
 ```
-main ← feat/F012-crud-hutang ← feat/F013-biaya-bulanan ← ...
+main ← feat/F009-ringkasan-mingguan ← ...
 ```
 
 Setiap fitur: 1 branch → CI pass → 1 PR → squash merge ke main.
@@ -227,3 +227,4 @@ Setiap fitur: 1 branch → CI pass → 1 PR → squash merge ke main.
 | 1.0 | 2026-02-13 | Initial template |
 | 2.0 | 2026-02-13 | Complete rewrite — dashboard PWA architecture |
 | 3.0 | 2026-02-14 | Added Daily Target (5.4), future features (F012-F014), updated file map, known issues |
+| 4.0 | 2026-02-14 | F012+F013+F014 shipped: updated architecture (monthly-expenses route), file map (3 new debt components), business rules (5.2 hutang CRUD), status v1.3.0, removed completed items from future features |

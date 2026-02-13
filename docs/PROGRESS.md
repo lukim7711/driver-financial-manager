@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 02:35 WIB
+> Last Updated: 2026-02-14 02:56 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F013 (Biaya Bulanan Dinamis)
+- **Fase:** F012 (CRUD Hutang)
 - **Status:** ✅ MERGED
-- **PR:** [#9](https://github.com/lukim7711/driver-financial-manager/pull/9)
-- **Catatan:** CRUD biaya bulanan + integrasi Target Harian. CI pass, squash-merged.
+- **PR:** [#10](https://github.com/lukim7711/driver-financial-manager/pull/10)
+- **Catatan:** Full CRUD hutang (tambah/edit/hapus) + 3 new components. CI pass, squash-merged.
 
 ---
 
-## 🏆 STATUS: v1.2.0 — Monthly Expenses CRUD
+## 🏆 STATUS: v1.3.0 — Debt CRUD
 
 ### Infrastructure
 
@@ -44,10 +44,12 @@
 |----|------|--------|--------|
 | DT001 | Daily Target (Target Harian Minimal) | ✅ DONE | main |
 | F014 | Edit Target Tanggal Lunas | ✅ DONE | main |
-| F013 | Biaya Bulanan Dinamis | ✅ MERGED | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
+| F013 | Biaya Bulanan Dinamis | ✅ DONE | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
+| F012 | CRUD Hutang (Tambah/Edit/Hapus) | ✅ MERGED | [#10](https://github.com/lukim7711/driver-financial-manager/pull/10) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
+| EMOJI-FIX | Emoji escape bug di DailyTarget | ✅ DONE | main |
 
 ### Bonus
 
@@ -63,22 +65,22 @@
 |----|------|--------|--------|
 | F009 | Ringkasan Mingguan | ⬜ TODO | |
 | F011 | Help/Onboarding | ⬜ TODO | |
-| F012 | CRUD Hutang (Tambah/Edit/Hapus) | ⬜ TODO | Backend hanya GET + PAY, belum bisa create/edit/delete hutang |
 
 ---
 
-## API v1.2.0 — 13 Endpoints
+## API v1.3.0 — 16 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
 | `/api/transactions` | POST, GET | F001 |
 | `/api/transactions/:id` | PUT, DELETE | F007 |
 | `/api/dashboard` | GET | F004 + DT001 |
-| `/api/debts` | GET | F005 |
+| `/api/debts` | GET, POST | F005 + F012 |
+| `/api/debts/:id` | PUT, DELETE | F012 |
 | `/api/debts/:id/pay` | POST | F006 |
 | `/api/report/daily` | GET | F008 |
 | `/api/ocr` | POST | F002 |
-| `/api/settings` | GET, PUT | Settings + F014 (debt_target_date) |
+| `/api/settings` | GET, PUT | Settings + F014 |
 | `/api/monthly-expenses` | GET, POST | F013 |
 | `/api/monthly-expenses/:id` | PUT, DELETE | F013 |
 
@@ -93,15 +95,42 @@
 | OCR tidak ada entry point | ✅ FIXED | Added button di QuickInput step 1 |
 | CD cache error | ✅ FIXED | Removed npm cache config, npm ci → npm install |
 | Emoji escape bug di Settings | ✅ FIXED | Replaced \\uXXXX with actual emoji chars |
+| Emoji escape bug di DailyTarget | ✅ FIXED | Same fix applied to DailyTarget.tsx |
 | Missing income categories | ✅ FIXED | Added Tips + Insentif |
 | CD deploy tanpa tunggu CI | ✅ FIXED | workflow_run trigger, deploy hanya jika CI success |
 | Target date hardcode | ✅ FIXED | F014 — editable di Settings |
 | Biaya bulanan hardcode | ✅ FIXED | F013 — CRUD biaya bulanan di Settings |
-| Hutang tidak bisa CRUD | ⬜ TODO | Butuh F012 (CRUD Hutang) |
+| Hutang tidak bisa CRUD | ✅ FIXED | F012 — POST/PUT/DELETE /api/debts |
 
 ---
 
 ## Session Log
+
+### Session 15 — 2026-02-14 02:48–02:56 WIB
+
+**Fase:** F012 (CRUD Hutang)
+
+**Backend:**
+- ✅ POST `/api/debts` — create new debt + auto-generate monthly schedules
+- ✅ PUT `/api/debts/:id` — edit platform, total, installment, due_day, late fee
+- ✅ DELETE `/api/debts/:id` — soft delete + cascade delete schedules
+- ✅ Schema migration: `is_deleted` + `created_at` columns on debts table
+- ✅ Durable Object: `migrateDebtsColumns()` — ALTER TABLE with try/catch
+- ✅ GET filter: `WHERE is_deleted = 0 OR is_deleted IS NULL`
+- ✅ Validasi: platform max 50 char, integer > 0, due_day 1-31, installments 1-120
+- ✅ Schedule generation: from due_day + total_installments, starting current month
+
+**Frontend:**
+- ✅ `AddDebtForm.tsx` (NEW) — Bottom sheet: platform, total, cicilan, tgl jatuh tempo, jumlah cicilan, tipe denda, rate denda
+- ✅ `EditDebtDialog.tsx` (NEW) — Partial edit with smart diff, only sends changed fields
+- ✅ `DeleteDebtDialog.tsx` (NEW) — Konfirmasi hapus + info sisa hutang
+- ✅ `DebtCard.tsx` — Added ✏️ edit + 🗑️ delete buttons in expanded view
+- ✅ `Debts.tsx` — FAB (+) button, empty state, CRUD state/handlers, render dialogs
+
+**Docs:**
+- ✅ `docs/features/F012-crud-hutang.md` (NEW) — Full feature spec
+
+**Result:** CI ✅ PASS → Squash-merged ([#10](https://github.com/lukim7711/driver-financial-manager/pull/10))
 
 ### Session 14 — 2026-02-14 02:13–02:35 WIB
 
@@ -204,6 +233,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 02:35 WIB
-- **Total Sessions:** 14
-- **Current Phase:** v1.2.0 — F013 Biaya Bulanan Dinamis (SHIPPED)
+- **Last Updated:** 2026-02-14 02:56 WIB
+- **Total Sessions:** 15
+- **Current Phase:** v1.3.0 — F012 CRUD Hutang (SHIPPED)
