@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../lib/api'
 import { formatRupiah } from '../lib/format'
+import { useToast } from '../components/Toast'
 import { BottomNav } from '../components/BottomNav'
 import type { MonthlyExpense, DailyExpense } from '../types'
 
@@ -14,13 +15,13 @@ interface ListResponse<T> {
 }
 
 const DAILY_EMOJI_OPTIONS = [
-  '⛽', '🍜', '🚭', '📱', '🅿️', '🔧', '🚗',
-  '☕', '💊', '🧊', '🛒', '📦', '🎮', '🏋️',
+  '\u26fd', '\ud83c\udf5c', '\ud83d\udead', '\ud83d\udcf1', '\ud83c\udd7f\ufe0f', '\ud83d\udd27', '\ud83d\ude97',
+  '\u2615', '\ud83d\udc8a', '\ud83e\uddca', '\ud83d\uded2', '\ud83d\udce6', '\ud83c\udfae', '\ud83c\udfcb\ufe0f',
 ]
 
 const MONTHLY_EMOJI_OPTIONS = [
-  '🏠', '💡', '💧', '📶', '🔌', '🏥', '🎓',
-  '📺', '🚗', '🛡️', '📦', '🧹', '👶', '🐾',
+  '\ud83c\udfe0', '\ud83d\udca1', '\ud83d\udca7', '\ud83d\udcf6', '\ud83d\udd0c', '\ud83c\udfe5', '\ud83c\udf93',
+  '\ud83d\udcfa', '\ud83d\ude97', '\ud83d\udee1\ufe0f', '\ud83d\udce6', '\ud83e\uddf9', '\ud83d\udc76', '\ud83d\udc3e',
 ]
 
 function formatDateDisplay(dateStr: string): string {
@@ -51,17 +52,17 @@ function getDaysFromNow(dateStr: string): number {
 }
 
 export function Settings() {
+  const toast = useToast()
   const [targetDate, setTargetDate] = useState('2026-04-13')
   const [editDate, setEditDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // Daily expenses state
   const [dailyItems, setDailyItems] = useState<DailyExpense[]>([])
   const [dailyTotal, setDailyTotal] = useState(0)
   const [showAddDaily, setShowAddDaily] = useState(false)
   const [newDailyName, setNewDailyName] = useState('')
-  const [newDailyEmoji, setNewDailyEmoji] = useState('📦')
+  const [newDailyEmoji, setNewDailyEmoji] = useState('\ud83d\udce6')
   const [newDailyAmount, setNewDailyAmount] = useState('')
   const [dailyEdits, setDailyEdits] = useState<
     Record<string, string>
@@ -75,7 +76,7 @@ export function Settings() {
   const [monthlyTotal, setMonthlyTotal] = useState(0)
   const [showAddMonthly, setShowAddMonthly] = useState(false)
   const [newMonthlyName, setNewMonthlyName] = useState('')
-  const [newMonthlyEmoji, setNewMonthlyEmoji] = useState('📦')
+  const [newMonthlyEmoji, setNewMonthlyEmoji] = useState('\ud83d\udce6')
   const [newMonthlyAmount, setNewMonthlyAmount] = useState('')
   const [monthlyEdits, setMonthlyEdits] = useState<
     Record<string, string>
@@ -83,7 +84,6 @@ export function Settings() {
   const [savingMonthly, setSavingMonthly] = useState(false)
 
   const [savingTarget, setSavingTarget] = useState(false)
-  const [savedTarget, setSavedTarget] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -101,6 +101,8 @@ export function Settings() {
       setTargetDate(
         settingsRes.data.debt_target_date || '2026-04-13'
       )
+    } else if (!settingsRes.success) {
+      toast.error(settingsRes.error)
     }
     if (dailyRes.success && dailyRes.data) {
       setDailyItems(dailyRes.data.items)
@@ -111,7 +113,7 @@ export function Settings() {
       setMonthlyTotal(monthlyRes.data.total)
     }
     setLoading(false)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     void fetchAll()
@@ -121,11 +123,10 @@ export function Settings() {
   const handleSaveTarget = async () => {
     if (!editDate || savingTarget) return
     if (!/^\d{4}-\d{2}-\d{2}$/.test(editDate)) {
-      setError('Format tanggal tidak valid')
+      toast.error('Format tanggal tidak valid')
       return
     }
     setSavingTarget(true)
-    setError(null)
     const res = await apiClient<SettingsData>(
       '/api/settings',
       {
@@ -140,10 +141,9 @@ export function Settings() {
         res.data.debt_target_date || editDate
       )
       setEditDate(null)
-      setSavedTarget(true)
-      setTimeout(() => setSavedTarget(false), 2000)
+      toast.success('Target tersimpan')
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal menyimpan')
+      toast.error(res.error)
     }
     setSavingTarget(false)
   }
@@ -153,11 +153,10 @@ export function Settings() {
     if (!newDailyName.trim() || savingDaily) return
     const amount = parseInt(newDailyAmount, 10)
     if (isNaN(amount) || amount < 0) {
-      setError('Nominal harus angka >= 0')
+      toast.error('Nominal harus angka >= 0')
       return
     }
     setSavingDaily(true)
-    setError(null)
     const res = await apiClient<DailyExpense>(
       '/api/daily-expenses',
       {
@@ -173,11 +172,12 @@ export function Settings() {
       setDailyItems((prev) => [...prev, res.data!])
       setDailyTotal((prev) => prev + res.data!.amount)
       setNewDailyName('')
-      setNewDailyEmoji('📦')
+      setNewDailyEmoji('\ud83d\udce6')
       setNewDailyAmount('')
       setShowAddDaily(false)
+      toast.success('Budget harian ditambahkan')
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal menambah')
+      toast.error(res.error)
     }
     setSavingDaily(false)
   }
@@ -194,7 +194,7 @@ export function Settings() {
     if (val === undefined) return
     const amount = parseInt(val, 10)
     if (isNaN(amount) || amount < 0) {
-      setError('Nominal harus angka >= 0')
+      toast.error('Nominal harus angka >= 0')
       return
     }
     setSavingDaily(true)
@@ -222,7 +222,7 @@ export function Settings() {
         return next
       })
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal update')
+      toast.error(res.error)
     }
     setSavingDaily(false)
   }
@@ -241,8 +241,9 @@ export function Settings() {
       if (removed) {
         setDailyTotal((prev) => prev - removed.amount)
       }
+      toast.success('Budget dihapus')
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal menghapus')
+      toast.error(res.error)
     }
     setSavingDaily(false)
   }
@@ -257,11 +258,10 @@ export function Settings() {
     if (!newMonthlyName.trim() || savingMonthly) return
     const amount = parseInt(newMonthlyAmount, 10)
     if (isNaN(amount) || amount < 0) {
-      setError('Nominal harus angka >= 0')
+      toast.error('Nominal harus angka >= 0')
       return
     }
     setSavingMonthly(true)
-    setError(null)
     const res = await apiClient<MonthlyExpense>(
       '/api/monthly-expenses',
       {
@@ -277,11 +277,12 @@ export function Settings() {
       setMonthlyItems((prev) => [...prev, res.data!])
       setMonthlyTotal((prev) => prev + res.data!.amount)
       setNewMonthlyName('')
-      setNewMonthlyEmoji('📦')
+      setNewMonthlyEmoji('\ud83d\udce6')
       setNewMonthlyAmount('')
       setShowAddMonthly(false)
+      toast.success('Biaya bulanan ditambahkan')
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal menambah')
+      toast.error(res.error)
     }
     setSavingMonthly(false)
   }
@@ -298,7 +299,7 @@ export function Settings() {
     if (val === undefined) return
     const amount = parseInt(val, 10)
     if (isNaN(amount) || amount < 0) {
-      setError('Nominal harus angka >= 0')
+      toast.error('Nominal harus angka >= 0')
       return
     }
     setSavingMonthly(true)
@@ -326,7 +327,7 @@ export function Settings() {
         return next
       })
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal update')
+      toast.error(res.error)
     }
     setSavingMonthly(false)
   }
@@ -347,8 +348,9 @@ export function Settings() {
       if (removed) {
         setMonthlyTotal((prev) => prev - removed.amount)
       }
+      toast.success('Biaya bulanan dihapus')
     } else if (!res.success) {
-      setError(res.error ?? 'Gagal menghapus')
+      toast.error(res.error)
     }
     setSavingMonthly(false)
   }
@@ -412,7 +414,7 @@ export function Settings() {
           onClick={() => void onDelete(item.id)}
           className="tap-highlight-none rounded-lg p-1.5 text-red-400 hover:bg-red-50 active:scale-95"
         >
-          🗑️
+          {'\ud83d\uddd1\ufe0f'}
         </button>
       </div>
     </div>
@@ -483,7 +485,7 @@ export function Settings() {
               onClick={() => {
                 setShow(false)
                 setName('')
-                setEmoji('📦')
+                setEmoji('\ud83d\udce6')
                 setAmount('')
               }}
               className="tap-highlight-none flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-500 active:scale-95"
@@ -499,8 +501,8 @@ export function Settings() {
               className="tap-highlight-none flex-1 rounded-lg bg-emerald-600 py-2 text-sm font-bold text-white active:scale-95 disabled:bg-gray-200 disabled:text-gray-400"
             >
               {saving
-                ? '⏳ Menyimpan...'
-                : '✅ Tambah'}
+                ? '\u23f3 Menyimpan...'
+                : '\u2705 Tambah'}
             </button>
           </div>
         </div>
@@ -520,7 +522,7 @@ export function Settings() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-gray-800 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">⚙️ Pengaturan</h1>
+        <h1 className="text-lg font-bold">{'\u2699\ufe0f'} Pengaturan</h1>
         <p className="text-sm text-gray-400">
           Atur budget, target & preferensi
         </p>
@@ -537,12 +539,12 @@ export function Settings() {
           {/* Target Lunas */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">
-              🎯 Target Lunas Hutang
+              {'\ud83c\udfaf'} Target Lunas Hutang
             </h2>
             <div className="rounded-xl bg-white border border-gray-200 px-4 py-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">📅</span>
+                  <span className="text-lg">{'\ud83d\udcc5'}</span>
                   <div>
                     <p className="text-sm font-medium text-gray-700">
                       Tanggal Target
@@ -576,22 +578,17 @@ export function Settings() {
                   className="tap-highlight-none w-full rounded-lg bg-gray-800 py-2 text-sm font-bold text-white active:scale-95 disabled:bg-gray-300"
                 >
                   {savingTarget
-                    ? '⏳ Menyimpan...'
-                    : '💾 Simpan Target'}
+                    ? '\u23f3 Menyimpan...'
+                    : '\ud83d\udcbe Simpan Target'}
                 </button>
-              )}
-              {savedTarget && (
-                <p className="text-xs text-center text-emerald-600">
-                  ✅ Target tersimpan!
-                </p>
               )}
             </div>
           </div>
 
-          {/* Daily budgets — DYNAMIC CRUD */}
+          {/* Daily budgets */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">
-              💸 Budget Harian
+              {'\ud83d\udcb8'} Budget Harian
             </h2>
 
             {dailyItems.map((item) =>
@@ -631,10 +628,10 @@ export function Settings() {
             </div>
           </div>
 
-          {/* Monthly expenses — DYNAMIC CRUD */}
+          {/* Monthly expenses */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">
-              📆 Biaya Bulanan
+              {'\ud83d\udcc6'} Biaya Bulanan
             </h2>
 
             {monthlyItems.map((item) =>
@@ -675,17 +672,10 @@ export function Settings() {
             </div>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2 text-center text-sm text-red-600">
-              {error}
-            </div>
-          )}
-
           {/* App info */}
           <div className="text-center space-y-1 pt-4">
             <p className="text-xs text-gray-400">
-              Money Manager v1.3.1
+              Money Manager v1.9.0
             </p>
             <p className="text-xs text-gray-300">
               Driver Ojol Financial Dashboard

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
 import { compressImage } from '../lib/compress-image'
+import { useToast } from '../components/Toast'
 import { OcrResult } from '../components/OcrResult'
 import { BottomNav } from '../components/BottomNav'
 
@@ -20,6 +21,7 @@ interface OcrData {
 
 export function OcrUpload() {
   const navigate = useNavigate()
+  const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -34,7 +36,7 @@ export function OcrUpload() {
 
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
     if (!validTypes.includes(file.type)) {
-      setError('Format tidak didukung. Gunakan JPG, PNG, atau WebP.')
+      toast.error('Format tidak didukung. Gunakan JPG, PNG, atau WebP.')
       return
     }
 
@@ -56,10 +58,14 @@ export function OcrUpload() {
       if (json.success && json.data) {
         setOcrData(json.data)
       } else {
-        setError(json.error || 'OCR gagal')
+        const msg = json.error || 'OCR gagal'
+        setError(msg)
+        toast.error(msg)
       }
     } catch {
-      setError('Koneksi gagal. Coba lagi.')
+      const msg = 'Koneksi gagal. Coba lagi.'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setProcessing(false)
     }
@@ -77,9 +83,10 @@ export function OcrUpload() {
       body: JSON.stringify({ ...data, source: 'ocr' }),
     })
     if (res.success) {
+      toast.success('Transaksi dari struk tersimpan')
       void navigate('/')
     } else {
-      setError(res.error || 'Gagal menyimpan')
+      toast.error(res.error || 'Gagal menyimpan')
     }
   }
 
@@ -110,7 +117,7 @@ export function OcrUpload() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-indigo-600 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">📷 Upload Struk</h1>
+        <h1 className="text-lg font-bold">{'\ud83d\udcf7'} Upload Struk</h1>
         <p className="text-sm text-indigo-200">Foto struk, biar app yang baca</p>
       </div>
 
@@ -125,7 +132,7 @@ export function OcrUpload() {
         {/* Processing */}
         {processing && (
           <div className="rounded-2xl bg-white border border-gray-200 p-8 text-center space-y-3">
-            <p className="text-3xl animate-spin inline-block">🔄</p>
+            <p className="text-3xl animate-spin inline-block">{'\ud83d\udd04'}</p>
             <p className="font-semibold text-gray-700">Membaca struk...</p>
             <p className="text-xs text-gray-400">Biasanya kurang dari 5 detik</p>
           </div>
@@ -141,14 +148,14 @@ export function OcrUpload() {
                 onClick={handleRetry}
                 className="tap-highlight-none rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white"
               >
-                🔄 Coba Lagi
+                {'\ud83d\udd04'} Coba Lagi
               </button>
               <button
                 type="button"
                 onClick={() => void navigate('/input')}
                 className="tap-highlight-none rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600"
               >
-                ✏️ Input Manual
+                {'\u270f\ufe0f'} Input Manual
               </button>
             </div>
           </div>
@@ -157,7 +164,7 @@ export function OcrUpload() {
         {/* Upload area */}
         {!processing && !error && !preview && (
           <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-white p-12 text-center space-y-4">
-            <p className="text-4xl">📸</p>
+            <p className="text-4xl">{'\ud83d\udcf8'}</p>
             <p className="text-sm text-gray-500">Tap untuk foto atau pilih dari galeri</p>
           </div>
         )}
@@ -170,14 +177,14 @@ export function OcrUpload() {
               onClick={() => cameraRef.current?.click()}
               className="tap-highlight-none rounded-2xl bg-indigo-500 py-4 text-center font-bold text-white transition-all active:scale-95"
             >
-              📷 Kamera
+              {'\ud83d\udcf7'} Kamera
             </button>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               className="tap-highlight-none rounded-2xl border border-indigo-200 bg-indigo-50 py-4 text-center font-bold text-indigo-600 transition-all active:scale-95"
             >
-              🖼️ Galeri
+              {'\ud83d\uddbc\ufe0f'} Galeri
             </button>
           </div>
         )}
@@ -205,7 +212,7 @@ export function OcrUpload() {
             onClick={() => void navigate(-1)}
             className="w-full text-center text-sm text-gray-400 py-2"
           >
-            ← Kembali
+            {'\u2190'} Kembali
           </button>
         )}
       </div>

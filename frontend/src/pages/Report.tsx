@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../lib/api'
+import { useToast } from '../components/Toast'
 import {
   formatRupiah, todayISO, formatDate,
 } from '../lib/format'
@@ -49,6 +50,7 @@ function shiftDate(dateStr: string, days: number): string {
 }
 
 export function Report() {
+  const toast = useToast()
   const [tab, setTab] = useState<'daily' | 'weekly'>(
     'daily'
   )
@@ -66,9 +68,13 @@ export function Report() {
     const res = await apiClient<ReportData>(
       `/api/report/daily?date=${d}`
     )
-    if (res.success && res.data) setData(res.data)
+    if (res.success && res.data) {
+      setData(res.data)
+    } else if (!res.success) {
+      toast.error(res.error)
+    }
     setLoading(false)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     if (tab === 'daily') void fetchReport(date)
@@ -83,6 +89,7 @@ export function Report() {
 
   const handleEditDone = () => {
     setEditTx(null)
+    toast.success('Transaksi diperbarui')
     void fetchReport(date)
   }
 
@@ -91,7 +98,7 @@ export function Report() {
       {/* Header */}
       <div className="bg-purple-600 px-4 pt-6 pb-4 text-white">
         <h1 className="text-lg font-bold">
-          📊 Laporan
+          {'\ud83d\udcca'} Laporan
         </h1>
 
         {/* Tab switcher */}
@@ -105,7 +112,7 @@ export function Report() {
                 : 'text-purple-200'
             }`}
           >
-            📅 Harian
+            {'\ud83d\udcc5'} Harian
           </button>
           <button
             type="button"
@@ -116,7 +123,7 @@ export function Report() {
                 : 'text-purple-200'
             }`}
           >
-            📆 Mingguan
+            {'\ud83d\udcc6'} Mingguan
           </button>
         </div>
 
@@ -130,7 +137,7 @@ export function Report() {
               }
               className="tap-highlight-none rounded-lg bg-purple-700 px-3 py-1 text-sm"
             >
-              ←
+              {'\u2190'}
             </button>
             <span className="font-semibold">
               {formatDate(date)}
@@ -148,7 +155,7 @@ export function Report() {
                   : 'bg-purple-800 opacity-40'
               }`}
             >
-              →
+              {'\u2192'}
             </button>
           </div>
         )}
@@ -174,7 +181,7 @@ export function Report() {
               <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
-                    💰 Pemasukan
+                    {'\ud83d\udcb0'} Pemasukan
                   </span>
                   <span className="font-semibold text-emerald-600">
                     {formatRupiah(
@@ -184,7 +191,7 @@ export function Report() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
-                    💸 Pengeluaran
+                    {'\ud83d\udcb8'} Pengeluaran
                   </span>
                   <span className="font-semibold text-red-500">
                     {formatRupiah(
@@ -195,7 +202,7 @@ export function Report() {
                 {(data?.summary.debt_payment ?? 0) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">
-                      💳 Bayar Hutang
+                      {'\ud83d\udcb3'} Bayar Hutang
                     </span>
                     <span className="font-semibold text-orange-500">
                       {formatRupiah(
@@ -207,7 +214,7 @@ export function Report() {
                 <div className="border-t border-gray-100 pt-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-700">
-                      📈 Profit
+                      {'\ud83d\udcc8'} Profit
                     </span>
                     <span
                       className={`text-lg font-bold ${profitColor}`}
@@ -218,8 +225,8 @@ export function Report() {
                         )
                       )}
                       {(data?.summary.profit ?? 0) < 0
-                        ? ' ❌'
-                        : ' ✅'}
+                        ? ' \u274c'
+                        : ' \u2705'}
                     </span>
                   </div>
                 </div>
