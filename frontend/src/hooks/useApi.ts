@@ -1,46 +1,30 @@
 import { useState, useCallback } from 'react'
-import type { ApiResponse } from '../types'
-
-interface UseApiState<T> {
-  data: T | null
-  loading: boolean
-  error: string | null
-}
+import { apiClient } from '../lib/api'
 
 export function useApi<T>() {
-  const [state, setState] = useState<UseApiState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const execute = useCallback(async (url: string, options?: RequestInit) => {
-    setState({ data: null, loading: true, error: null })
-
+  const execute = useCallback(async (
+    path: string,
+    init?: RequestInit,
+  ): Promise<T | null> => {
+    setLoading(true)
+    setError(null)
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-      })
-
-      const json = (await response.json()) as ApiResponse<T>
-
-      if (!json.success) {
-        setState({ data: null, loading: false, error: json.error || 'Unknown error' })
-        return null
+      const res = await apiClient<T>(path, init)
+      if (res.success) {
+        return res.data ?? null
       }
-
-      setState({ data: json.data || null, loading: false, error: null })
-      return json.data || null
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Network error'
-      setState({ data: null, loading: false, error: errorMessage })
+      setError(res.error || 'Unknown error')
       return null
+    } catch {
+      setError('Koneksi gagal')
+      return null
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { ...state, execute }
+  return { loading, error, execute }
 }
