@@ -14,26 +14,21 @@ export class MoneyManagerDB extends DurableObject<Env> {
   private ensureInitialized() {
     if (this.initialized) return
 
-    // Create tables if not exist
     this.ctx.storage.sql.exec(SCHEMA_SQL)
 
-    // Check if seed data already exists (idempotent)
     const cursor = this.ctx.storage.sql.exec(
       'SELECT COUNT(*) as count FROM debts'
     )
     const row = [...cursor][0]
     const count = row?.count as number | undefined
 
-    // Seed data only if tables are empty
     if (!count || count === 0) {
       this.ctx.storage.sql.exec(SEED_SQL)
     }
 
-    // F013 Migration: move budget_rt → monthly_expenses
     this.migrateBudgetRt()
-
-    // F012 Migration: add is_deleted + created_at to debts
     this.migrateDebtsColumns()
+    this.migrateDailyBudgets()
 
     this.initialized = true
   }
@@ -67,12 +62,6 @@ export class MoneyManagerDB extends DurableObject<Env> {
            '2026-02-12T00:00:00+07:00')`,
         rtValue
       )
-    } else {
-      this.ctx.storage.sql.exec(
-        `UPDATE monthly_expenses
-         SET amount = ? WHERE id = 'me-rt'`,
-        rtValue
-      )
     }
 
     this.ctx.storage.sql.exec(
@@ -81,22 +70,59 @@ export class MoneyManagerDB extends DurableObject<Env> {
   }
 
   private migrateDebtsColumns() {
-    // Add is_deleted column if missing
     try {
       this.ctx.storage.sql.exec(
         `ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`
       )
-    } catch {
-      // Column already exists, ignore
-    }
+    } catch { /* already exists */ }
 
-    // Add created_at column if missing
     try {
       this.ctx.storage.sql.exec(
         `ALTER TABLE debts ADD COLUMN created_at TEXT`
       )
-    } catch {
-      // Column already exists, ignore
+    } catch { /* already exists */ }
+  }
+
+  private migrateDailyBudgets() {
+    const keys = [
+      { key: 'budget_bbm', name: 'BBM', emoji: '⛽', fallback: 40000 },
+      { key: 'budget_makan', name: 'Makan', emoji: '🍜', fallback: 25000 },
+      { key: 'budget_rokok', name: 'Rokok', emoji: '🚭', fallback: 27000 },
+      { key: 'budget_pulsa', name: 'Pulsa', emoji: '📱', fallback: 5000 },
+    ]
+
+    const checkCursor = this.ctx.storage.sql.exec(
+      `SELECT COUNT(*) as count FROM daily_expenses`
+    )
+    const checkRow = [...checkCursor][0]
+    const existing = (checkRow?.count as number) || 0
+    if (existing > 0) return
+
+    const ts = '2026-02-12T00:00:00+07:00'
+
+    for (const item of keys) {
+      const valCursor = this.ctx.storage.sql.exec(
+        `SELECT value FROM settings WHERE key = ?`,
+        item.key
+      )
+      const valRow = [...valCursor][0]
+      const amount = valRow
+        ? (Number(valRow.value) || item.fallback)
+        : item.fallback
+
+      this.ctx.storage.sql.exec(
+        `INSERT INTO daily_expenses
+          (id, name, emoji, amount, is_deleted, created_at)
+        VALUES (?, ?, ?, ?, 0, ?)`,
+        `de-${item.key}`, item.name, item.emoji, amount, ts
+      )
+    }
+
+    for (const item of keys) {
+      this.ctx.storage.sql.exec(
+        `DELETE FROM settings WHERE key = ?`,
+        item.key
+      )
     }
   }
 

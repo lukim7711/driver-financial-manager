@@ -18,7 +18,7 @@ interface DashboardData {
     transaction_count: number
   }
   budget: {
-    daily_expense: number
+    daily_total: number
     total_monthly: number
     spent_today: number
     remaining: number
@@ -100,7 +100,7 @@ export function Home() {
     transaction_count: 0,
   }
   const budget = data?.budget ?? {
-    daily_expense: 0,
+    daily_total: 0,
     total_monthly: 0,
     spent_today: 0,
     remaining: 0,
@@ -129,13 +129,6 @@ export function Home() {
     progress_percentage: 0,
     target_date: '',
   }
-
-  const daysInMonth = target.breakdown.days_in_month || 30
-  const proratedMonthly = budget.total_monthly > 0
-    ? Math.round(budget.total_monthly / daysInMonth)
-    : 0
-  const totalDailyBudget =
-    budget.daily_expense + proratedMonthly
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -188,9 +181,9 @@ export function Home() {
           daysRemaining={target.days_remaining}
         />
 
-        {/* Budget bar */}
+        {/* Budget bar — daily only, no prorate */}
         <BudgetBar
-          totalDaily={totalDailyBudget}
+          totalDaily={budget.daily_total}
           spentToday={budget.spent_today}
           remaining={budget.remaining}
           percentageUsed={budget.percentage_used}

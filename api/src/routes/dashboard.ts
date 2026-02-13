@@ -15,7 +15,7 @@ interface TodaySummary {
 }
 
 interface BudgetInfo {
-  daily_expense: number
+  daily_total: number
   total_monthly: number
   spent_today: number
   remaining: number
@@ -148,23 +148,16 @@ route.get('/', async (c) => {
       transaction_count: txCount,
     }
 
-    // 2. Load daily budget settings
-    const settingsRows = await queryDB(db,
-      `SELECT key, value FROM settings
-       WHERE key LIKE 'budget_%'`
+    // 2. Daily budget from daily_expenses table
+    const dailyRows = await queryDB(db,
+      `SELECT COALESCE(SUM(amount), 0) as total
+       FROM daily_expenses
+       WHERE is_deleted = 0`
     )
-    const budgetMap: Record<string, number> = {}
-    for (const row of settingsRows) {
-      budgetMap[String(row.key)] = Number(row.value) || 0
-    }
+    const dailyBudgetTotal =
+      Number(dailyRows[0]?.total) || 0
 
-    const dailyExpenseBudget =
-      (budgetMap['budget_bbm'] ?? 40000) +
-      (budgetMap['budget_makan'] ?? 25000) +
-      (budgetMap['budget_rokok'] ?? 27000) +
-      (budgetMap['budget_pulsa'] ?? 5000)
-
-    // 2b. Load monthly expenses (F013)
+    // 2b. Monthly expenses for DailyTarget only
     const monthlyRows = await queryDB(db,
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM monthly_expenses
@@ -177,22 +170,23 @@ route.get('/', async (c) => {
       ? Math.round(totalMonthly / daysInMonth)
       : 0
 
-    const totalDailyBudget =
-      dailyExpenseBudget + proratedMonthly
-    const budgetRemaining = totalDailyBudget - expense
-    const pctUsed = totalDailyBudget > 0
-      ? Math.round((expense / totalDailyBudget) * 100)
+    // Budget = daily only (NO prorate)
+    const budgetRemaining = dailyBudgetTotal - expense
+    const pctUsed = dailyBudgetTotal > 0
+      ? Math.round(
+          (expense / dailyBudgetTotal) * 100
+        )
       : 0
 
     const budget: BudgetInfo = {
-      daily_expense: dailyExpenseBudget,
+      daily_total: dailyBudgetTotal,
       total_monthly: totalMonthly,
       spent_today: expense,
       remaining: budgetRemaining,
       percentage_used: pctUsed,
     }
 
-    // 3. Daily target calculation
+    // 3. Daily target (uses prorate here)
     const targetRows = await queryDB(db,
       `SELECT value FROM settings
        WHERE key = 'debt_target_date'`
@@ -205,7 +199,8 @@ route.get('/', async (c) => {
       `SELECT
         COALESCE(SUM(total_original), 0) as total_original,
         COALESCE(SUM(total_remaining), 0) as total_remaining
-      FROM debts`
+      FROM debts
+      WHERE is_deleted = 0 OR is_deleted IS NULL`
     )
     const debtAgg = debtRows[0] || {}
     const totalOriginal =
@@ -228,7 +223,7 @@ route.get('/', async (c) => {
     )
 
     const targetAmount =
-      dailyExpenseBudget + proratedMonthly + dailyDebt
+      dailyBudgetTotal + proratedMonthly + dailyDebt
     const gap = income - targetAmount
 
     const daily_target: DailyTarget = {
@@ -237,7 +232,7 @@ route.get('/', async (c) => {
       gap,
       is_on_track: gap >= 0,
       breakdown: {
-        daily_expense: dailyExpenseBudget,
+        daily_expense: dailyBudgetTotal,
         prorated_monthly: proratedMonthly,
         total_monthly: totalMonthly,
         daily_debt: dailyDebt,
@@ -255,6 +250,7 @@ route.get('/', async (c) => {
       JOIN debts d ON ds.debt_id = d.id
       WHERE ds.status = 'unpaid'
         AND ds.due_date <= date(?, '+7 days')
+        AND (d.is_deleted = 0 OR d.is_deleted IS NULL)
       ORDER BY ds.due_date ASC`,
       [date]
     )
