@@ -1,8 +1,8 @@
 # 🧭 AI-CONTEXT
 # Money Manager — AI Navigation Map
 
-> **Version:** 2.0  
-> **Last Updated:** 2026-02-13  
+> **Version:** 3.0  
+> **Last Updated:** 2026-02-14  
 
 ---
 
@@ -42,7 +42,7 @@ Cloudflare Workers (Hono API)
    ├── /api/report          → Laporan harian/mingguan
    ├── /api/ocr             → Proxy ke ocr.space
    ├── /api/settings        → Budget preferences
-   └── /api/dashboard       → Aggregate home data
+   └── /api/dashboard       → Aggregate home data + daily target
    │
    ▼
 Durable Objects (SQLite)
@@ -63,7 +63,7 @@ Durable Objects (SQLite)
 | `docs/PRD.md` | Product requirements, studi kasus, features, UI flows | Memahami APA yang dibangun |
 | `docs/CONSTITUTION.md` | Tech stack, code rules, API contract, deployment | Memahami BAGAIMANA membangun |
 | `docs/AI-CONTEXT.md` | This file — navigation map | Orientasi awal sebelum kerja |
-| `docs/PROGRESS.md` | Session log, current phase, decisions | Status terkini proyek |
+| `docs/PROGRESS.md` | Session log, current phase, decisions, known issues | Status terkini proyek |
 | `docs/features/*.md` | Per-feature detailed spec | Saat implement fitur spesifik |
 | `docs/adr/*.md` | Architecture Decision Records | Sejarah keputusan teknis |
 
@@ -73,12 +73,20 @@ Durable Objects (SQLite)
 |----------|---------|
 | `frontend/src/App.tsx` | Root component + routing setup |
 | `frontend/src/main.tsx` | React entry point |
-| `frontend/src/pages/Home.tsx` | Dashboard utama: summary + alert |
-| `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save |
+| `frontend/src/pages/Home.tsx` | Dashboard: summary + daily target + budget + alerts |
+| `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save. Also has OCR shortcut button. |
+| `frontend/src/pages/OcrUpload.tsx` | Upload struk foto → OCR → auto-parse |
 | `frontend/src/pages/Debts.tsx` | Status hutang + progress + tandai lunas |
 | `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat |
-| `frontend/src/pages/Settings.tsx` | Adjust budget + preferences |
-| `frontend/src/components/` | Reusable: PresetButton, CategoryPicker, ProgressBar, etc. |
+| `frontend/src/pages/Settings.tsx` | Adjust budget harian + bulanan |
+| `frontend/src/components/DailyTarget.tsx` | Target harian minimal: progress bar + gap + breakdown |
+| `frontend/src/components/SummaryCard.tsx` | Ringkasan pemasukan/pengeluaran/profit hari ini |
+| `frontend/src/components/BudgetBar.tsx` | Sisa budget harian (max pengeluaran) |
+| `frontend/src/components/CategoryGrid.tsx` | Grid kategori income/expense |
+| `frontend/src/components/AmountInput.tsx` | Input nominal dengan preset buttons |
+| `frontend/src/components/BottomNav.tsx` | Navigation bar: Home, Catat, Hutang, Laporan, Setting |
+| `frontend/src/components/DueAlert.tsx` | Alert jatuh tempo hutang |
+| `frontend/src/components/DebtProgress.tsx` | Progress bar total hutang |
 | `frontend/src/hooks/` | useApi, useTransactions, useDebts |
 | `frontend/src/lib/api.ts` | API client base |
 | `frontend/src/lib/format.ts` | Format Rupiah (Rp 50.000), tanggal |
@@ -96,15 +104,10 @@ Durable Objects (SQLite)
 | `api/src/routes/report.ts` | GET daily/weekly report |
 | `api/src/routes/ocr.ts` | POST image → ocr.space → parsed result |
 | `api/src/routes/settings.ts` | GET/PUT settings |
+| `api/src/routes/dashboard.ts` | GET dashboard aggregate + daily target calculation |
 | `api/src/db/durable-object.ts` | DO class: SQLite init, query methods |
 | `api/src/db/schema.sql` | Table definitions |
 | `api/src/db/seed.sql` | Pre-loaded hutang data (5 platform) |
-| `api/src/services/transaction.ts` | Transaction business logic |
-| `api/src/services/debt.ts` | Debt payment + progress calculation |
-| `api/src/services/report.ts` | SQL aggregation for reports |
-| `api/src/services/budget.ts` | Budget checking, remaining calc |
-| `api/src/utils/format.ts` | Currency/date formatting |
-| `api/src/utils/response.ts` | Standard ApiResponse helper |
 | `api/wrangler.toml` | CF Worker config: DO bindings, vars, secrets |
 
 ---
@@ -114,6 +117,8 @@ Durable Objects (SQLite)
 ### 5.1 Transaksi
 - Semua `amount` dalam INTEGER Rupiah (no floating point)
 - Tipe: `income`, `expense`, `debt_payment`
+- Income categories: `order`, `tips`, `bonus`, `insentif`, `lainnya_masuk`
+- Expense categories: `bbm`, `makan`, `rokok`, `pulsa`, `parkir`, `service`, `lainnya`
 - `debt_payment` otomatis mengurangi `debts.total_remaining` dan update `debt_schedule.status`
 - Soft delete: set `is_deleted = 1`, never hard delete
 
@@ -122,17 +127,28 @@ Durable Objects (SQLite)
 - Setiap hutang punya jadwal cicilan detail per bulan
 - "Tandai Lunas" = catat expense + update schedule status + update remaining
 - Denda dihitung berdasarkan tipe: `pct_monthly` (4-5%/bulan) atau `pct_daily` (0.25%/hari)
+- ⚠️ Hutang belum bisa CRUD (hanya read + pay). Lihat F012.
 
 ### 5.3 Budget
-- Default dari studi kasus (BBM 40k, Makan 25k, dll)
-- User bisa adjust via Settings
-- Dashboard menampilkan sisa budget harian = budget - pengeluaran hari ini
+- Budget harian: BBM, Makan, Rokok, Pulsa (adjustable via Settings)
+- Budget bulanan: RT (saat ini hardcode `budget_rt`, belum dinamis)
+- BudgetBar = budget harian + (bulanan ÷ hari di bulan ini) - pengeluaran hari ini
+- ⚠️ Biaya bulanan belum CRUD (hanya 1 item: RT). Lihat F013.
 
-### 5.4 Target Lunas
-- Total hutang: Rp 8.851.200
+### 5.4 Target Harian Minimal (DT001)
+- **Formula:** `Target = Pengeluaran Harian + (Bulanan ÷ Hari di Bulan) + (Sisa Hutang ÷ Sisa Hari ke Target)`
+- Semakin pendek target lunas → target harian semakin besar
+- Semakin panjang target lunas → target harian semakin kecil
+- Dashboard menampilkan: target amount, earned today, gap (surplus/kurang), breakdown
+- Warna: hijau (on track) / orange-merah (kurang)
+- RT prorate menggunakan jumlah hari di bulan berjalan (bukan konstan 30)
+- Baris RT di breakdown disembunyikan jika nilainya 0
+
+### 5.5 Target Lunas
+- Total hutang awal: Rp 8.851.200
 - Target: 13 April 2026 (2 bulan)
-- Butuh ~Rp 147.520/hari
 - Progress = (total_original - total_remaining) / total_original × 100%
+- ⚠️ Target date belum bisa diubah dari UI. Lihat F014.
 
 ---
 
@@ -140,44 +156,49 @@ Durable Objects (SQLite)
 
 | Fase | Status |
 |------|--------|
-| Fase 0: Setup Repository | ✅ Done |
-| Fase 1: PRD | ✅ Done |
-| Fase 2: Constitution (Tech Stack) | ✅ Done |
-| Fase 3: AI-Context | ✅ Done |
-| Fase 4: Feature Specs | ⬜ TODO |
-| Fase 5: Space Instruction | ⬜ TODO |
-| Fase 6: Build Loop | ⬜ TODO |
+| v1.0.0 MVP (8 features) | ✅ SHIPPED |
+| v1.1.0 Daily Target + Hotfixes | ✅ SHIPPED |
+| v1.2.0 (planned) | ⬜ F012 + F013 + F014 |
+
+See `docs/PROGRESS.md` for detailed session logs and known issues.
 
 ---
 
-## 7. Development Workflow
+## 7. Future Features (Planned)
 
-### Build Order (Recommended)
+| ID | Nama | Detail |
+|----|------|--------|
+| F012 | CRUD Hutang | POST/PUT/DELETE /api/debts — tambah, edit, hapus hutang dari UI |
+| F013 | Biaya Bulanan Dinamis | CRUD biaya bulanan di Settings: nama, icon/emoji, nominal. Semua item masuk ke kalkulasi Target Harian. Contoh: RT, Listrik, Air, WiFi. Saat ini hanya hardcode `budget_rt`. |
+| F014 | Edit Target Tanggal Lunas | Target date saat ini hardcode `2026-04-13`. Harus bisa diubah dari Settings. |
+| F009 | Ringkasan Mingguan | Weekly summary report |
+| F011 | Help/Onboarding | First-time user guide |
 
-1. **Setup project** — Vite React + Hono Workers + wrangler.toml + DO schema + seed
-2. **API: Transaction CRUD** — POST/GET/PUT/DELETE /api/transactions
-3. **API: Debts + Report** — GET /api/debts, GET /api/report/daily
-4. **Frontend: Home + QuickInput** — Dashboard + tap-based input
-5. **Frontend: Debts + Report** — Status hutang + laporan
-6. **OCR Integration** — POST /api/ocr → ocr.space
-7. **Settings + PWA** — Budget adjust + manifest.json + service worker
-8. **Deploy + Test** — Cloudflare Pages + Workers live
+---
+
+## 8. Development Workflow
+
+### Build Order (Recommended for next features)
+
+1. **F013** — Biaya Bulanan Dinamis (unblocks accurate daily target)
+2. **F014** — Edit Target Tanggal (unblocks flexible planning)
+3. **F012** — CRUD Hutang (unblocks real-world usage)
 
 ### Per-Feature Branch Pattern
 
 ```
-main ← feat/F001-quick-input ← feat/F002-ocr-upload ← ...
+main ← feat/F012-crud-hutang ← feat/F013-biaya-bulanan ← ...
 ```
 
-Setiap fitur: 1 branch → 1 PR → squash merge ke main.
+Setiap fitur: 1 branch → CI pass → 1 PR → squash merge ke main.
 
 ---
 
-## 8. Naming Conventions
+## 9. Naming Conventions
 
 | Type | Convention | Example |
 |------|-----------|----------|
-| React components | PascalCase | `QuickInput.tsx`, `PresetButton.tsx` |
+| React components | PascalCase | `QuickInput.tsx`, `DailyTarget.tsx` |
 | Hooks | camelCase with `use` prefix | `useApi.ts`, `useTransactions.ts` |
 | API routes | kebab-case | `/api/transactions`, `/api/debts` |
 | DB tables | snake_case | `debt_schedule`, `transactions` |
@@ -186,18 +207,16 @@ Setiap fitur: 1 branch → 1 PR → squash merge ke main.
 | CSS classes | Tailwind utilities | `bg-green-500 text-white p-4` |
 | Files | kebab-case (backend), PascalCase (React) | `transaction.ts`, `Home.tsx` |
 | Git branches | `type/description` | `feat/F001-quick-input` |
-| Commits | `type: description` | `feat: add transaction CRUD API` |
+| Commits | `type(scope): description` | `feat(api): add transaction CRUD API` |
 
 ---
 
-## 9. External Services
+## 10. External Services
 
 | Service | URL | Key Location | Free Tier |
 |---------|-----|-------------|------------|
 | ocr.space | `https://api.ocr.space/parse/image` | CF Worker Secret: `OCR_SPACE_API_KEY` | 500 req/hari |
 | Workers AI | Via `env.AI.run()` binding | Built-in (wrangler.toml) | 10k neurons/hari |
-| Telegram Bot API | `https://api.telegram.org` | Not used in MVP | N/A |
-| Google Maps API | `https://maps.googleapis.com` | Not used in MVP (future) | N/A |
 
 ---
 
@@ -207,3 +226,4 @@ Setiap fitur: 1 branch → 1 PR → squash merge ke main.
 |---------|------|---------|
 | 1.0 | 2026-02-13 | Initial template |
 | 2.0 | 2026-02-13 | Complete rewrite — dashboard PWA architecture |
+| 3.0 | 2026-02-14 | Added Daily Target (5.4), future features (F012-F014), updated file map, known issues |
