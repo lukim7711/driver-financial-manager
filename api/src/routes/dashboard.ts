@@ -31,6 +31,7 @@ interface DailyTarget {
     daily_expense: number
     prorated_rt: number
     daily_debt: number
+    days_in_month: number
   }
   days_remaining: number
   target_date: string
@@ -85,6 +86,11 @@ function getUrgency(daysUntil: number): UpcomingDue['urgency'] {
   return 'normal'
 }
 
+function getDaysInMonth(dateStr: string): number {
+  const d = new Date(dateStr)
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+}
+
 route.get('/', async (c) => {
   try {
     const date = c.req.query('date')
@@ -136,8 +142,9 @@ route.get('/', async (c) => {
       (budgetMap['budget_makan'] ?? 25000) +
       (budgetMap['budget_rokok'] ?? 27000) +
       (budgetMap['budget_pulsa'] ?? 5000)
-    const monthlyRT = budgetMap['budget_rt'] ?? 75000
-    const proratedRT = Math.round(monthlyRT / 30)
+    const monthlyRT = budgetMap['budget_rt'] ?? 0
+    const daysInMonth = getDaysInMonth(date)
+    const proratedRT = monthlyRT > 0 ? Math.round(monthlyRT / daysInMonth) : 0
 
     const totalDailyBudget = dailyExpenseBudget + proratedRT
     const budgetRemaining = totalDailyBudget - expense
@@ -191,12 +198,13 @@ route.get('/', async (c) => {
         daily_expense: dailyExpenseBudget,
         prorated_rt: proratedRT,
         daily_debt: dailyDebt,
+        days_in_month: daysInMonth,
       },
       days_remaining: daysRemaining,
       target_date: targetDate,
     }
 
-    // 4. Upcoming dues (next 7 days + overdue)
+    // 4. Upcoming dues
     const dueRows = await queryDB(db,
       `SELECT ds.debt_id, d.platform, ds.due_date, ds.amount
       FROM debt_schedule ds

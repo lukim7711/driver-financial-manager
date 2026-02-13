@@ -34,6 +34,7 @@ interface DashboardData {
       daily_expense: number
       prorated_rt: number
       daily_debt: number
+      days_in_month: number
     }
     days_remaining: number
     target_date: string
@@ -88,17 +89,24 @@ export function Home() {
     )
   }
 
-  const today = data?.today ?? { income: 0, expense: 0, debt_payment: 0, profit: 0, transaction_count: 0 }
-  const budget = data?.budget ?? { daily_expense: 0, monthly_rt: 0, spent_today: 0, remaining: 0, percentage_used: 0 }
+  const today = data?.today ?? {
+    income: 0, expense: 0, debt_payment: 0, profit: 0, transaction_count: 0,
+  }
+  const budget = data?.budget ?? {
+    daily_expense: 0, monthly_rt: 0, spent_today: 0, remaining: 0, percentage_used: 0,
+  }
   const target = data?.daily_target ?? {
     target_amount: 0, earned_today: 0, gap: 0, is_on_track: false,
-    breakdown: { daily_expense: 0, prorated_rt: 0, daily_debt: 0 },
+    breakdown: { daily_expense: 0, prorated_rt: 0, daily_debt: 0, days_in_month: 30 },
     days_remaining: 0, target_date: '',
   }
   const dues = data?.upcoming_dues ?? []
-  const debt = data?.debt_summary ?? { total_original: 0, total_remaining: 0, total_paid: 0, progress_percentage: 0, target_date: '' }
+  const debt = data?.debt_summary ?? {
+    total_original: 0, total_remaining: 0, total_paid: 0, progress_percentage: 0, target_date: '',
+  }
 
-  const totalDailyBudget = budget.daily_expense + Math.round(budget.monthly_rt / 30)
+  const totalDailyBudget = budget.daily_expense +
+    (budget.monthly_rt > 0 ? Math.round(budget.monthly_rt / target.breakdown.days_in_month) : 0)
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -106,15 +114,15 @@ export function Home() {
       <div className="bg-emerald-600 px-4 pt-6 pb-4 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">💰 Money Manager</h1>
-            <p className="text-sm text-emerald-100">📅 {formatDateLong(todayISO())}</p>
+            <h1 className="text-lg font-bold">\uD83D\uDCB0 Money Manager</h1>
+            <p className="text-sm text-emerald-100">\uD83D\uDCC5 {formatDateLong(todayISO())}</p>
           </div>
           <button
             type="button"
             onClick={handleRefresh}
             className={`tap-highlight-none rounded-full p-2 transition-all ${refreshing ? 'animate-spin' : ''}`}
           >
-            🔄
+            \uD83D\uDD04
           </button>
         </div>
       </div>
@@ -139,6 +147,7 @@ export function Home() {
             dailyExpense: target.breakdown.daily_expense,
             proratedRt: target.breakdown.prorated_rt,
             dailyDebt: target.breakdown.daily_debt,
+            daysInMonth: target.breakdown.days_in_month,
           }}
           daysRemaining={target.days_remaining}
         />
@@ -151,19 +160,10 @@ export function Home() {
           percentageUsed={budget.percentage_used}
         />
 
-        {/* CTA */}
-        <button
-          type="button"
-          onClick={() => void navigate('/input')}
-          className="tap-highlight-none w-full rounded-2xl bg-emerald-500 py-4 text-center text-lg font-bold text-white shadow-lg transition-all active:scale-95"
-        >
-          ➕ Catat Transaksi
-        </button>
-
         {/* Due alerts */}
         {dues.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-500">⚠️ JATUH TEMPO</h2>
+            <h2 className="text-sm font-semibold text-gray-500">\u26A0\uFE0F JATUH TEMPO</h2>
             {dues.map((due) => (
               <DueAlert key={`${due.debt_id}-${due.due_date}`} due={due} />
             ))}
