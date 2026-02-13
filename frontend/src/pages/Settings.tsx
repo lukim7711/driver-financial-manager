@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
 import { formatRupiah } from '../lib/format'
 import { useToast } from '../components/Toast'
@@ -53,6 +54,7 @@ function getDaysFromNow(dateStr: string): number {
 
 export function Settings() {
   const toast = useToast()
+  const navigate = useNavigate()
   const [targetDate, setTargetDate] = useState('2026-04-13')
   const [editDate, setEditDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -118,6 +120,12 @@ export function Settings() {
   useEffect(() => {
     void fetchAll()
   }, [fetchAll])
+
+  // === Onboarding re-trigger ===
+  const handleShowGuide = () => {
+    localStorage.removeItem('onboarding_completed')
+    void navigate('/')
+  }
 
   // === Target date ===
   const handleSaveTarget = async () => {
@@ -672,10 +680,33 @@ export function Settings() {
             </div>
           </div>
 
+          {/* Panduan / Help */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-500">
+              {'\u2753'} Bantuan
+            </h2>
+            <button
+              type="button"
+              onClick={handleShowGuide}
+              className="tap-highlight-none flex w-full items-center gap-3 rounded-xl bg-white border border-gray-200 px-4 py-3 text-left transition-all active:scale-[0.98]"
+            >
+              <span className="text-2xl">{'\ud83d\udcd6'}</span>
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  Lihat Panduan
+                </p>
+                <p className="text-xs text-gray-400">
+                  Tampilkan walkthrough fitur-fitur utama
+                </p>
+              </div>
+              <span className="ml-auto text-gray-300">{'\u203a'}</span>
+            </button>
+          </div>
+
           {/* App info */}
           <div className="text-center space-y-1 pt-4">
             <p className="text-xs text-gray-400">
-              Money Manager v1.9.0
+              Money Manager v2.0.0
             </p>
             <p className="text-xs text-gray-300">
               Driver Ojol Financial Dashboard

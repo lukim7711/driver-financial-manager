@@ -8,6 +8,8 @@ import { BudgetBar } from '../components/BudgetBar'
 import { DueAlert } from '../components/DueAlert'
 import { DebtProgress } from '../components/DebtProgress'
 import { BottomNav } from '../components/BottomNav'
+import { OnboardingOverlay } from '../components/OnboardingOverlay'
+import { useOnboarding } from '../hooks/use-onboarding'
 
 interface DashboardData {
   date: string
@@ -64,6 +66,7 @@ export function Home() {
   )
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const onboarding = useOnboarding()
 
   const fetchDashboard = useCallback(async () => {
     const date = todayISO()
@@ -147,15 +150,25 @@ export function Home() {
               {'\ud83d\udcc5'} {formatDateLong(todayISO())}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className={`tap-highlight-none rounded-full p-2 transition-all ${
-              refreshing ? 'animate-spin' : ''
-            }`}
-          >
-            {'\ud83d\udd04'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onboarding.reopen}
+              className="tap-highlight-none flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white transition-all active:scale-90"
+              title="Bantuan"
+            >
+              ?
+            </button>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className={`tap-highlight-none rounded-full p-2 transition-all ${
+                refreshing ? 'animate-spin' : ''
+              }`}
+            >
+              {'\ud83d\udd04'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -229,6 +242,15 @@ export function Home() {
           </p>
         )}
       </div>
+
+      {/* Onboarding Overlay */}
+      <OnboardingOverlay
+        isOpen={onboarding.isOpen}
+        step={onboarding.step}
+        onNext={onboarding.next}
+        onPrev={onboarding.prev}
+        onClose={onboarding.close}
+      />
 
       <BottomNav active="home" />
     </div>
