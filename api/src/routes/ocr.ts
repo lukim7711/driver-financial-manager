@@ -87,6 +87,10 @@ function parseSuggestion(rawText: string): Suggestion {
   }
 }
 
+function isFileEntry(value: FormDataEntryValue): value is Blob {
+  return typeof value === 'object' && 'type' in value && 'size' in value
+}
+
 // POST /api/ocr
 route.post('/', async (c) => {
   try {
@@ -104,7 +108,7 @@ route.post('/', async (c) => {
     if (contentType.includes('multipart/form-data')) {
       const formData = await c.req.formData()
       const file = formData.get('file')
-      if (!file || !(file instanceof File)) {
+      if (!file || !isFileEntry(file)) {
         return c.json<ApiResponse<never>>(
           { success: false, error: 'File gambar wajib diupload' },
           400
