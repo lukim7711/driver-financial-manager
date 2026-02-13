@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS debts (
   total_installments INTEGER NOT NULL,
   paid_installments INTEGER NOT NULL DEFAULT 0,
   is_deleted INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT
+  created_at TEXT,
+  debt_type TEXT NOT NULL DEFAULT 'installment',
+  note TEXT NOT NULL DEFAULT ''
 );
 
 -- Table: debt_schedule
