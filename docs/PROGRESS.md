@@ -1,21 +1,22 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 01:47 WIB
+> Last Updated: 2026-02-14 02:28 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F014 (Edit Target Tanggal) + CI/CD pipeline fix
+- **Fase:** F013 (Biaya Bulanan Dinamis)
 - **Status:** ✅ DONE
-- **Branch:** `main` (direct push)
-- **Catatan:** Target date editable di Settings + CD sekarang menunggu CI pass
+- **Branch:** `feat/F013-biaya-bulanan`
+- **PR:** [#9](https://github.com/lukim7711/driver-financial-manager/pull/9)
+- **Catatan:** CRUD biaya bulanan + integrasi Target Harian
 
 ---
 
-## 🏆 STATUS: v1.1.0 — Daily Target + F014
+## 🏆 STATUS: v1.2.0 — Monthly Expenses CRUD
 
 ### Infrastructure
 
@@ -40,10 +41,11 @@
 
 ### Post-Launch Features
 
-| ID | Nama | Status | Commit |
+| ID | Nama | Status | Commit/PR |
 |----|------|--------|--------|
 | DT001 | Daily Target (Target Harian Minimal) | ✅ DONE | main |
 | F014 | Edit Target Tanggal Lunas | ✅ DONE | main |
+| F013 | Biaya Bulanan Dinamis | ✅ DONE | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -63,11 +65,10 @@
 | F009 | Ringkasan Mingguan | ⬜ TODO | |
 | F011 | Help/Onboarding | ⬜ TODO | |
 | F012 | CRUD Hutang (Tambah/Edit/Hapus) | ⬜ TODO | Backend hanya GET + PAY, belum bisa create/edit/delete hutang |
-| F013 | Biaya Bulanan Dinamis | ⬜ TODO | CRUD biaya bulanan di Settings (nama, icon, nominal). Terintegrasi ke Target Harian. Saat ini hanya hardcode budget_rt. Harus bisa tambah/hapus/edit item (RT, Listrik, Air, WiFi, dll.) |
 
 ---
 
-## API v1.1.0 — 9 Endpoints
+## API v1.2.0 — 13 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -79,6 +80,8 @@
 | `/api/report/daily` | GET | F008 |
 | `/api/ocr` | POST | F002 |
 | `/api/settings` | GET, PUT | Settings + F014 (debt_target_date) |
+| `/api/monthly-expenses` | GET, POST | F013 |
+| `/api/monthly-expenses/:id` | PUT, DELETE | F013 |
 
 ---
 
@@ -94,12 +97,39 @@
 | Missing income categories | ✅ FIXED | Added Tips + Insentif |
 | CD deploy tanpa tunggu CI | ✅ FIXED | workflow_run trigger, deploy hanya jika CI success |
 | Target date hardcode | ✅ FIXED | F014 — editable di Settings |
-| Biaya bulanan hardcode | ⬜ TODO | Butuh F013 (Biaya Bulanan Dinamis) |
+| Biaya bulanan hardcode | ✅ FIXED | F013 — CRUD biaya bulanan di Settings |
 | Hutang tidak bisa CRUD | ⬜ TODO | Butuh F012 (CRUD Hutang) |
 
 ---
 
 ## Session Log
+
+### Session 14 — 2026-02-14 02:13–02:28 WIB
+
+**Fase:** F013 (Biaya Bulanan Dinamis)
+
+**Backend:**
+- ✅ Tabel `monthly_expenses` — id, name, emoji, amount, is_deleted, created_at
+- ✅ Seed default: 🏠 RT/Rumah Tangga Rp 75.000
+- ✅ Migration: `budget_rt` dari `settings` otomatis dipindah ke tabel baru
+- ✅ CRUD endpoints: GET, POST, PUT, DELETE `/api/monthly-expenses`
+- ✅ Dashboard: Query `monthly_expenses` → `SUM(amount)` → `prorated_monthly`
+- ✅ Settings: **Hapus** `budget_rt` dari budget keys
+
+**Frontend:**
+- ✅ Settings: Section Budget Bulanan jadi dinamis — list + CRUD
+- ✅ Tambah item: Modal form dengan nama, emoji picker (pre-defined list), nominal
+- ✅ Edit inline: Tiap field bisa di-edit langsung
+- ✅ Hapus item: Tombol 🗑️ → confirm → soft delete
+- ✅ Total bulanan: Sum semua item, tampil di bawah list
+- ✅ DailyTarget: `prorated_rt` → `prorated_monthly`
+- ✅ Home: Update dashboard interfaces
+
+**Files Changed:**
+- Backend: schema.ts, seed.ts, durable-object.ts, monthly-expense.ts (NEW), dashboard.ts, settings.ts, types/index.ts, index.ts
+- Frontend: Settings.tsx, DailyTarget.tsx, Home.tsx, types/index.ts
+
+**PR:** [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) — menunggu CI pass
 
 ### Session 13 — 2026-02-14 01:32–01:47 WIB
 
@@ -175,6 +205,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 01:47 WIB
-- **Total Sessions:** 13
-- **Current Phase:** v1.1.0 — Daily Target + F014 + CI/CD Fix
+- **Last Updated:** 2026-02-14 02:28 WIB
+- **Total Sessions:** 14
+- **Current Phase:** v1.2.0 — F013 Biaya Bulanan Dinamis
