@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
 import { todayISO, formatDateLong } from '../lib/format'
 import { SummaryCard } from '../components/SummaryCard'
@@ -57,7 +56,6 @@ interface DashboardData {
 }
 
 export function Home() {
-  const navigate = useNavigate()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -114,15 +112,15 @@ export function Home() {
       <div className="bg-emerald-600 px-4 pt-6 pb-4 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">\uD83D\uDCB0 Money Manager</h1>
-            <p className="text-sm text-emerald-100">\uD83D\uDCC5 {formatDateLong(todayISO())}</p>
+            <h1 className="text-lg font-bold">💰 Money Manager</h1>
+            <p className="text-sm text-emerald-100">📅 {formatDateLong(todayISO())}</p>
           </div>
           <button
             type="button"
             onClick={handleRefresh}
             className={`tap-highlight-none rounded-full p-2 transition-all ${refreshing ? 'animate-spin' : ''}`}
           >
-            \uD83D\uDD04
+            🔄
           </button>
         </div>
       </div>
@@ -163,7 +161,7 @@ export function Home() {
         {/* Due alerts */}
         {dues.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-500">\u26A0\uFE0F JATUH TEMPO</h2>
+            <h2 className="text-sm font-semibold text-gray-500">⚠️ JATUH TEMPO</h2>
             {dues.map((due) => (
               <DueAlert key={`${due.debt_id}-${due.due_date}`} due={due} />
             ))}
