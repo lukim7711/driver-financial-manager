@@ -44,26 +44,23 @@ app.get('/', (c) => {
   })
 })
 
-// Helper to get DO stub
-function _getDB(env: Bindings) {
+/** Get Durable Object stub for database access */
+export function getDB(env: Bindings) {
   const id = env.DB.idFromName('default')
   return env.DB.get(id)
 }
 
-// API routes (stubs — will be expanded per feature)
-app.get('/api/transactions', async (_c) => {
-  // TODO: Implement transaction query via DO
-  return _c.json({ success: true, data: [] })
+// API routes (stubs — will call getDB() when implemented per feature)
+app.get('/api/transactions', async (c) => {
+  return c.json({ success: true, data: [] })
 })
 
-app.get('/api/debts', async (_c) => {
-  // TODO: Implement debts query via DO
-  return _c.json({ success: true, data: [] })
+app.get('/api/debts', async (c) => {
+  return c.json({ success: true, data: [] })
 })
 
-app.get('/api/dashboard', async (_c) => {
-  // TODO: Implement dashboard aggregation via DO
-  return _c.json({
+app.get('/api/dashboard', async (c) => {
+  return c.json({
     success: true,
     data: {
       today: { income: 0, expense: 0, profit: 0, budget_remaining: 0 },
@@ -72,9 +69,8 @@ app.get('/api/dashboard', async (_c) => {
   })
 })
 
-app.get('/api/settings', async (_c) => {
-  // TODO: Implement settings query via DO
-  return _c.json({ success: true, data: {} })
+app.get('/api/settings', async (c) => {
+  return c.json({ success: true, data: {} })
 })
 
 // 404 handler
