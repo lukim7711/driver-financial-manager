@@ -8,6 +8,7 @@ import { reportRoute } from './routes/report'
 import { ocrRoute } from './routes/ocr'
 import { settingsRoute } from './routes/settings'
 import { monthlyExpenseRoute } from './routes/monthly-expense'
+import { dailyExpenseRoute } from './routes/daily-expense'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -43,7 +44,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '1.2.0',
+      version: '1.3.1',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -58,6 +59,7 @@ app.route('/api/report', reportRoute)
 app.route('/api/ocr', ocrRoute)
 app.route('/api/settings', settingsRoute)
 app.route('/api/monthly-expenses', monthlyExpenseRoute)
+app.route('/api/daily-expenses', dailyExpenseRoute)
 
 app.notFound((c) => {
   return c.json(

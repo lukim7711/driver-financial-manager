@@ -43,6 +43,15 @@ export interface MonthlyExpense {
   created_at: string
 }
 
+export interface DailyExpense {
+  id: string
+  name: string
+  emoji: string
+  amount: number
+  is_deleted: number
+  created_at: string
+}
+
 export interface ApiResponse<T> {
   success: boolean
   data?: T
