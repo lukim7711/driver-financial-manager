@@ -245,6 +245,12 @@ route.put('/:id', async (c) => {
       [id]
     )
     const row = rows[0]
+    if (!row) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: 'Item tidak ditemukan setelah update' },
+        404
+      )
+    }
     const item: MonthlyExpense = {
       id: String(row.id),
       name: String(row.name),

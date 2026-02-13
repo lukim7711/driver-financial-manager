@@ -162,7 +162,7 @@ export function Settings() {
       setEdits({})
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } else {
+    } else if (!res.success) {
       setError(res.error ?? 'Gagal menyimpan')
     }
     setSaving(false)
@@ -198,7 +198,7 @@ export function Settings() {
       setNewEmoji('📦')
       setNewAmount('')
       setShowAddForm(false)
-    } else {
+    } else if (!res.success) {
       setError(res.error ?? 'Gagal menambah')
     }
     setSavingMonthly(false)
@@ -245,7 +245,7 @@ export function Settings() {
         delete next[id]
         return next
       })
-    } else {
+    } else if (!res.success) {
       setError(res.error ?? 'Gagal update')
     }
     setSavingMonthly(false)
@@ -266,7 +266,7 @@ export function Settings() {
       if (removed) {
         setMonthlyTotal((prev) => prev - removed.amount)
       }
-    } else {
+    } else if (!res.success) {
       setError(res.error ?? 'Gagal menghapus')
     }
     setSavingMonthly(false)
