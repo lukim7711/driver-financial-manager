@@ -1,47 +1,15 @@
 import { Hono } from 'hono'
 import type { ApiResponse, MonthlyExpense } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
+import { getNowISO } from '../utils/date'
+import { generateId } from '../utils/id'
 
 const route = new Hono<{ Bindings: Bindings }>()
 
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
-
-function generateId(): string {
-  return `me-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-function nowISO(): string {
-  const d = new Date()
-  const offset = 7 * 60
-  const local = new Date(d.getTime() + offset * 60 * 1000)
-  return local.toISOString().replace('Z', '+07:00')
-}
-
 const VALID_EMOJIS = [
-  '🏠', '💡', '💧', '📶', '🔌', '🏥', '🎓',
-  '📺', '🚗', '🛡️', '📦', '🧹', '👶', '🐾',
+  '\ud83c\udfe0', '\ud83d\udca1', '\ud83d\udca7', '\ud83d\udcf6', '\ud83d\udd0c', '\ud83c\udfe5', '\ud83c\udf93',
+  '\ud83d\udcfa', '\ud83d\ude97', '\ud83d\udee1\ufe0f', '\ud83d\udce6', '\ud83e\uddf9', '\ud83d\udc76', '\ud83d\udc3e',
 ]
 
 // GET /api/monthly-expenses
@@ -120,10 +88,10 @@ route.post('/', async (c) => {
 
     const emoji = body.emoji && VALID_EMOJIS.includes(body.emoji)
       ? body.emoji
-      : '📦'
+      : '\ud83d\udce6'
 
-    const id = generateId()
-    const createdAt = nowISO()
+    const id = generateId('me')
+    const createdAt = getNowISO()
     const db = getDB(c.env)
 
     await queryDB(db,
@@ -171,7 +139,6 @@ route.put('/:id', async (c) => {
 
     const db = getDB(c.env)
 
-    // Check exists
     const existing = await queryDB(db,
       `SELECT id FROM monthly_expenses
        WHERE id = ? AND is_deleted = 0`,
@@ -207,7 +174,7 @@ route.put('/:id', async (c) => {
     if (body.emoji !== undefined) {
       const emoji = VALID_EMOJIS.includes(body.emoji)
         ? body.emoji
-        : '📦'
+        : '\ud83d\udce6'
       updates.push('emoji = ?')
       params.push(emoji)
     }
@@ -238,7 +205,6 @@ route.put('/:id', async (c) => {
       params
     )
 
-    // Re-fetch updated item
     const rows = await queryDB(db,
       `SELECT id, name, emoji, amount, created_at
        FROM monthly_expenses WHERE id = ?`,
@@ -294,7 +260,6 @@ route.delete('/:id', async (c) => {
       )
     }
 
-    // Soft delete
     await queryDB(db,
       `UPDATE monthly_expenses
        SET is_deleted = 1 WHERE id = ?`,

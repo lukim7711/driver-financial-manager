@@ -1,32 +1,9 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
 
 const route = new Hono<{ Bindings: Bindings }>()
-
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
 
 interface BudgetSettings {
   budget_bbm: number
@@ -110,7 +87,6 @@ route.put('/', async (c) => {
 
     const updates: { key: string; value: string }[] = []
 
-    // Budget fields
     for (const key of BUDGET_KEYS) {
       if (body[key] !== undefined) {
         const val = Number(body[key])
@@ -127,7 +103,6 @@ route.put('/', async (c) => {
       }
     }
 
-    // Target date field
     if (body.debt_target_date !== undefined) {
       const dateStr = body.debt_target_date
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -171,8 +146,7 @@ route.put('/', async (c) => {
       )
     }
 
-    // Re-fetch to return updated
-    const rows = await queryDB(db,
+    const refetchRows = await queryDB(db,
       `SELECT key, value FROM settings
        WHERE key LIKE 'budget_%'
           OR key = 'debt_target_date'`
@@ -180,7 +154,7 @@ route.put('/', async (c) => {
     const settings: BudgetSettings = { ...DEFAULT_BUDGETS }
     let debtTargetDate = DEFAULT_TARGET_DATE
 
-    for (const row of rows) {
+    for (const row of refetchRows) {
       const key = String(row.key)
       if (key === 'debt_target_date') {
         debtTargetDate = String(row.value)

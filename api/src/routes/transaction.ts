@@ -1,34 +1,10 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
+import { getNowISO } from '../utils/date'
 
 const route = new Hono<{ Bindings: Bindings }>()
-
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(db: DurableObjectStub, sql: string, params: unknown[] = []) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<Record<string, unknown>[]>
-  return result.data || []
-}
-
-function getNowISO(): string {
-  const now = new Date()
-  const offset = 7 * 60
-  const local = new Date(now.getTime() + offset * 60 * 1000)
-  const iso = local.toISOString().slice(0, 19)
-  return `${iso}+07:00`
-}
 
 const VALID_TYPES = ['income', 'expense', 'debt_payment'] as const
 const VALID_INCOME_CATS = ['order', 'tips', 'bonus', 'insentif', 'lainnya'] as const
@@ -133,7 +109,6 @@ route.put('/:id', async (c) => {
     const txId = c.req.param('id')
     const db = getDB(c.env)
 
-    // Fetch existing
     const rows = await queryDB(db,
       `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
       [txId]

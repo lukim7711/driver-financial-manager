@@ -1,47 +1,15 @@
 import { Hono } from 'hono'
 import type { ApiResponse, DailyExpense } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
+import { getNowISO } from '../utils/date'
+import { generateId } from '../utils/id'
 
 const route = new Hono<{ Bindings: Bindings }>()
 
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
-
-function generateId(): string {
-  return `de-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-function nowISO(): string {
-  const d = new Date()
-  const offset = 7 * 60
-  const local = new Date(d.getTime() + offset * 60 * 1000)
-  return local.toISOString().replace('Z', '+07:00')
-}
-
 const VALID_EMOJIS = [
-  '⛽', '🍜', '🚭', '📱', '🅿️', '🔧', '🚗',
-  '☕', '💊', '🧊', '🛒', '📦', '🎮', '🏋️',
+  '\u26fd', '\ud83c\udf5c', '\ud83d\udead', '\ud83d\udcf1', '\ud83c\udd7f\ufe0f', '\ud83d\udd27', '\ud83d\ude97',
+  '\u2615', '\ud83d\udc8a', '\ud83e\uddca', '\ud83d\uded2', '\ud83d\udce6', '\ud83c\udfae', '\ud83c\udfcb\ufe0f',
 ]
 
 function toItem(row: Record<string, unknown>): DailyExpense {
@@ -123,10 +91,10 @@ route.post('/', async (c) => {
 
     const emoji = body.emoji && VALID_EMOJIS.includes(body.emoji)
       ? body.emoji
-      : '📦'
+      : '\ud83d\udce6'
 
-    const id = generateId()
-    const createdAt = nowISO()
+    const id = generateId('de')
+    const createdAt = getNowISO()
     const db = getDB(c.env)
 
     await queryDB(db,
@@ -203,7 +171,7 @@ route.put('/:id', async (c) => {
     if (body.emoji !== undefined) {
       const emoji = VALID_EMOJIS.includes(body.emoji)
         ? body.emoji
-        : '📦'
+        : '\ud83d\udce6'
       updates.push('emoji = ?')
       params.push(emoji)
     }
