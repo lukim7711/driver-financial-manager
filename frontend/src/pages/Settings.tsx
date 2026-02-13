@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
 import { formatRupiah } from '../lib/format'
 import { useToast } from '../components/Toast'
+import { ConfirmDeleteDialog } from '../components/ConfirmDeleteDialog'
 import { BottomNav } from '../components/BottomNav'
 import type { MonthlyExpense, DailyExpense } from '../types'
 
@@ -13,6 +14,14 @@ interface SettingsData {
 interface ListResponse<T> {
   items: T[]
   total: number
+}
+
+interface DeleteTarget {
+  id: string
+  emoji: string
+  name: string
+  amount: number
+  type: 'daily' | 'monthly'
 }
 
 const DAILY_EMOJI_OPTIONS = [
@@ -59,7 +68,6 @@ export function Settings() {
   const [editDate, setEditDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Daily expenses state
   const [dailyItems, setDailyItems] = useState<DailyExpense[]>([])
   const [dailyTotal, setDailyTotal] = useState(0)
   const [showAddDaily, setShowAddDaily] = useState(false)
@@ -71,7 +79,6 @@ export function Settings() {
   >({})
   const [savingDaily, setSavingDaily] = useState(false)
 
-  // Monthly expenses state
   const [monthlyItems, setMonthlyItems] = useState<
     MonthlyExpense[]
   >([])
@@ -86,6 +93,8 @@ export function Settings() {
   const [savingMonthly, setSavingMonthly] = useState(false)
 
   const [savingTarget, setSavingTarget] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -121,7 +130,6 @@ export function Settings() {
     void fetchAll()
   }, [fetchAll])
 
-  // === Onboarding re-trigger ===
   const handleShowGuide = () => {
     localStorage.removeItem('onboarding_completed')
     void navigate('/')
@@ -371,18 +379,31 @@ export function Settings() {
     return String(item.amount)
   }
 
+  // === Delete confirmation ===
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    if (deleteTarget.type === 'daily') {
+      await handleDeleteDaily(deleteTarget.id)
+    } else {
+      await handleDeleteMonthly(deleteTarget.id)
+    }
+    setDeleting(false)
+    setDeleteTarget(null)
+  }
+
   // === Render helpers ===
   const currentDate = editDate ?? targetDate
   const daysLeft = getDaysFromNow(currentDate)
   const hasDateChange = editDate !== null
 
   const renderExpenseItem = (
-    item: { id: string; emoji: string; name: string },
+    item: { id: string; emoji: string; name: string; amount: number },
     hint: string,
+    itemType: 'daily' | 'monthly',
     getValue: () => string,
     onChange: (id: string, val: string) => void,
     onBlur: (id: string) => void,
-    onDelete: (id: string) => void,
     editsMap: Record<string, string>
   ) => (
     <div
@@ -419,7 +440,15 @@ export function Settings() {
         </div>
         <button
           type="button"
-          onClick={() => void onDelete(item.id)}
+          onClick={() =>
+            setDeleteTarget({
+              id: item.id,
+              emoji: item.emoji,
+              name: item.name,
+              amount: item.amount,
+              type: itemType,
+            })
+          }
           className="tap-highlight-none rounded-lg p-1.5 text-red-400 hover:bg-red-50 active:scale-95"
         >
           {'\ud83d\uddd1\ufe0f'}
@@ -603,10 +632,10 @@ export function Settings() {
               renderExpenseItem(
                 item,
                 'Per hari',
+                'daily',
                 () => getDailyAmount(item),
                 handleDailyAmountChange,
                 (id) => void handleSaveDailyAmount(id),
-                (id) => void handleDeleteDaily(id),
                 dailyEdits
               )
             )}
@@ -646,11 +675,11 @@ export function Settings() {
               renderExpenseItem(
                 item,
                 'Per bulan',
+                'monthly',
                 () => getMonthlyAmount(item),
                 handleMonthlyAmountChange,
                 (id) =>
                   void handleSaveMonthlyAmount(id),
-                (id) => void handleDeleteMonthly(id),
                 monthlyEdits
               )
             )}
@@ -713,6 +742,23 @@ export function Settings() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteTarget && (
+        <ConfirmDeleteDialog
+          emoji={deleteTarget.emoji}
+          name={deleteTarget.name}
+          amount={deleteTarget.amount}
+          hint={
+            deleteTarget.type === 'daily'
+              ? 'Budget Harian'
+              : 'Biaya Bulanan'
+          }
+          onConfirm={() => void handleDeleteConfirm()}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deleting}
+        />
       )}
 
       <BottomNav active="settings" />
