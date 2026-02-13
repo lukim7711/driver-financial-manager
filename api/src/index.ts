@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { transactionRoute } from './routes/transaction'
 import { dashboardRoute } from './routes/dashboard'
+import { debtRoute } from './routes/debt'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -36,7 +37,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '0.2.0',
+      version: '0.3.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -46,12 +47,9 @@ app.get('/', (c) => {
 // API routes
 app.route('/api/transactions', transactionRoute)
 app.route('/api/dashboard', dashboardRoute)
+app.route('/api/debts', debtRoute)
 
 // Stub routes
-app.get('/api/debts', async (c) => {
-  return c.json({ success: true, data: [] })
-})
-
 app.get('/api/settings', async (c) => {
   return c.json({ success: true, data: {} })
 })
