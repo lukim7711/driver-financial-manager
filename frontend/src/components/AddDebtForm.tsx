@@ -211,7 +211,6 @@ export function AddDebtForm({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
       <div className="w-full max-w-md rounded-t-2xl bg-white p-5 space-y-4 animate-slide-up max-h-[92vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">
             Tambah Hutang
@@ -221,7 +220,7 @@ export function AddDebtForm({
             onClick={onCancel}
             className="text-gray-400 text-xl leading-none"
           >
-            \u00d7
+            {"\u00d7"}
           </button>
         </div>
 
@@ -231,7 +230,6 @@ export function AddDebtForm({
           </p>
         )}
 
-        {/* Section 1: Nama + Total */}
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-gray-500">
@@ -265,7 +263,6 @@ export function AddDebtForm({
           </div>
         </div>
 
-        {/* Section 2: Cicilan + Tgl */}
         <div className="grid grid-cols-3 gap-2">
           <div className="col-span-2">
             <label className="text-xs font-medium text-gray-500">
@@ -302,24 +299,21 @@ export function AddDebtForm({
           </div>
         </div>
 
-        {/* Auto-calc hint */}
         {autoCount > 0 && !generated && (
           <p className="text-xs text-gray-400 -mt-2">
-            = {autoCount}x cicilan
+            {'= '}{autoCount}{'x cicilan'}
           </p>
         )}
 
-        {/* Generate button */}
         <button
           type="button"
           onClick={handleGenerate}
           disabled={total <= 0 || monthly <= 0}
           className="w-full rounded-xl bg-amber-50 border border-amber-200 py-2.5 text-sm font-semibold text-amber-700 transition-all active:scale-95 disabled:opacity-40"
         >
-          \u26a1 Hitung Jadwal
+          {"\u26a1"} Hitung Jadwal
         </button>
 
-        {/* Section 3: Schedule rows */}
         {rows.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-2">
@@ -347,7 +341,7 @@ export function AddDebtForm({
                     key={r.key}
                     className="flex items-center gap-2"
                   >
-                    <span className="text-xs text-gray-400 w-12 shrink-0">
+                    <span className="text-xs text-gray-400 w-14 shrink-0">
                       {formatShort(r.due_date)}
                     </span>
                     <input
@@ -368,7 +362,7 @@ export function AddDebtForm({
                       }`}
                     />
                     {isLast && (
-                      <span className="text-xs">\u26a1</span>
+                      <span className="text-xs">{"\u26a1"}</span>
                     )}
                     <button
                       type="button"
@@ -377,7 +371,7 @@ export function AddDebtForm({
                       }
                       className="text-red-300 text-sm active:scale-90 hover:text-red-500"
                     >
-                      \u2715
+                      {"\u2715"}
                     </button>
                   </div>
                 )
@@ -386,7 +380,6 @@ export function AddDebtForm({
           </div>
         )}
 
-        {/* Add row */}
         <button
           type="button"
           onClick={handleAddRow}
@@ -395,7 +388,6 @@ export function AddDebtForm({
           + Tambah Baris
         </button>
 
-        {/* Total checker */}
         {rows.length > 0 && (
           <div
             className={`rounded-xl px-3 py-2 text-xs font-medium ${
@@ -405,12 +397,11 @@ export function AddDebtForm({
             }`}
           >
             {isMatch
-              ? `\u2705 ${formatRupiah(schedSum)} — cocok`
+              ? `\u2705 ${formatRupiah(schedSum)} \u2014 cocok`
               : `\u26a0\ufe0f ${formatRupiah(schedSum)} / ${formatRupiah(total)}`}
           </div>
         )}
 
-        {/* Submit */}
         <button
           type="button"
           onClick={() => void handleSubmit()}
