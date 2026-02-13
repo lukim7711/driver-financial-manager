@@ -66,7 +66,7 @@ export function Settings() {
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     const res = await apiClient<SettingsData>('/api/settings')
-    if (res.success && res.data) {
+    if (res.success) {
       setData(res.data)
       setEdits({})
     }
@@ -127,13 +127,13 @@ export function Settings() {
       body: JSON.stringify(payload),
     })
 
-    if (res.success && res.data) {
+    if (res.success) {
       setData(res.data)
       setEdits({})
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } else {
-      setError(res.error || 'Gagal menyimpan')
+      setError(res.error)
     }
     setSaving(false)
   }
