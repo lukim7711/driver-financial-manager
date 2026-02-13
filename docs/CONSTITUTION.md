@@ -1,7 +1,7 @@
 # ⚖️ CONSTITUTION
 # Money Manager — Technical Rules & Stack
 
-> **Version:** 2.0  
+> **Version:** 2.1  
 > **Status:** Active  
 > **Last Updated:** 2026-02-13  
 
@@ -105,7 +105,7 @@ driver-financial-manager/
 │   │   ├── index.ts               # Worker entry point + Hono app
 │   │   ├── routes/                # API route handlers
 │   │   │   ├── transaction.ts     # CRUD /api/transactions
-│   │   │   ├── debt.ts            # GET /api/debts, POST /api/debts/:id/pay
+│   │   │   ├── debt.ts            # CRUD /api/debts + /api/debts/:id/pay
 │   │   │   ├── report.ts          # GET /api/report/daily, /weekly
 │   │   │   ├── ocr.ts             # POST /api/ocr (proxy to ocr.space)
 │   │   │   └── settings.ts        # GET/PUT /api/settings
@@ -154,7 +154,11 @@ driver-financial-manager/
 | PUT | `/api/transactions/:id` | Update transaksi |
 | DELETE | `/api/transactions/:id` | Soft delete transaksi |
 | GET | `/api/debts` | List semua hutang + schedule |
+| POST | `/api/debts` | Buat hutang baru |
+| PUT | `/api/debts/:id` | Update data hutang (platform, amounts, due_day, dll) |
+| DELETE | `/api/debts/:id` | Hapus hutang (dan semua schedule-nya) |
 | POST | `/api/debts/:id/pay` | Tandai cicilan bulan ini lunas |
+| PUT | `/api/debts/:id/schedule/:schedule_id` | Update schedule cicilan (amount, due_date, status) |
 | GET | `/api/report/daily?date=YYYY-MM-DD` | Laporan harian |
 | GET | `/api/report/weekly?date=YYYY-MM-DD` | Laporan mingguan |
 | POST | `/api/ocr` | Upload image → OCR → return parsed text |
@@ -295,3 +299,4 @@ Types:
 |---------|------|---------|
 | 1.0 | 2026-02-13 | Initial template (empty) |
 | 2.0 | 2026-02-13 | Complete tech stack, code rules, API contract, deployment config |
+| 2.1 | 2026-02-13 | Add 4 debt CRUD endpoints: POST/PUT/DELETE /api/debts, PUT /api/debts/:id/schedule/:schedule_id |
