@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 03:17 WIB
+> Last Updated: 2026-02-14 03:28 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** Budget Harian CRUD + Fix Prorate
+- **Fase:** F009 (Ringkasan Mingguan)
 - **Status:** ✅ MERGED
-- **PR:** [#11](https://github.com/lukim7711/driver-financial-manager/pull/11)
-- **Catatan:** Budget harian jadi CRUD dinamis, pisahkan dari prorate bulanan di BudgetBar.
+- **PR:** [#12](https://github.com/lukim7711/driver-financial-manager/pull/12)
+- **Catatan:** Tab Harian/Mingguan di Report, weekly summary + trends + daily bars.
 
 ---
 
-## 🏆 STATUS: v1.3.1 — Budget Harian CRUD
+## 🏆 STATUS: v1.4.0 — Weekly Report
 
 ### Infrastructure
 
@@ -47,6 +47,7 @@
 | F013 | Biaya Bulanan Dinamis | ✅ DONE | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
 | F012 | CRUD Hutang (Tambah/Edit/Hapus) | ✅ DONE | [#10](https://github.com/lukim7711/driver-financial-manager/pull/10) |
 | BDG-FIX | Budget Harian CRUD + Fix Prorate | ✅ DONE | [#11](https://github.com/lukim7711/driver-financial-manager/pull/11) |
+| F009 | Ringkasan Mingguan | ✅ DONE | [#12](https://github.com/lukim7711/driver-financial-manager/pull/12) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -64,12 +65,11 @@
 
 | ID | Nama | Status | Catatan |
 |----|------|--------|--------|
-| F009 | Ringkasan Mingguan | ⬜ TODO | |
 | F011 | Help/Onboarding | ⬜ TODO | |
 
 ---
 
-## API v1.3.1 — 20 Endpoints
+## API v1.4.0 — 21 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -80,6 +80,7 @@
 | `/api/debts/:id` | PUT, DELETE | F012 |
 | `/api/debts/:id/pay` | POST | F006 |
 | `/api/report/daily` | GET | F008 |
+| `/api/report/weekly` | GET | F009 |
 | `/api/ocr` | POST | F002 |
 | `/api/settings` | GET, PUT | Settings + F014 |
 | `/api/monthly-expenses` | GET, POST | F013 |
@@ -89,85 +90,50 @@
 
 ---
 
-## ⚠️ Known Issues / Decisions
-
-| Issue | Status | Detail |
-|-------|--------|--------|
-| Budget RT campur harian | ✅ FIXED | RT sekarang di-prorate ÷ hari di bulan berjalan |
-| OCR language `ind` invalid | ✅ FIXED | Changed to `eng` (free tier compat) |
-| OCR tidak ada entry point | ✅ FIXED | Added button di QuickInput step 1 |
-| CD cache error | ✅ FIXED | Removed npm cache config, npm ci → npm install |
-| Emoji escape bug di Settings | ✅ FIXED | Replaced \\uXXXX with actual emoji chars |
-| Emoji escape bug di DailyTarget | ✅ FIXED | Same fix applied to DailyTarget.tsx |
-| Missing income categories | ✅ FIXED | Added Tips + Insentif |
-| CD deploy tanpa tunggu CI | ✅ FIXED | workflow_run trigger, deploy hanya jika CI success |
-| Target date hardcode | ✅ FIXED | F014 — editable di Settings |
-| Biaya bulanan hardcode | ✅ FIXED | F013 — CRUD biaya bulanan di Settings |
-| Hutang tidak bisa CRUD | ✅ FIXED | F012 — POST/PUT/DELETE /api/debts |
-| Budget harian beda Home vs Settings | ✅ FIXED | Prorate dihapus dari BudgetBar, budget harian jadi CRUD |
-| Budget harian hardcode 4 item | ✅ FIXED | Tabel daily_expenses + CRUD /api/daily-expenses |
-
----
-
 ## Session Log
+
+### Session 17 — 2026-02-14 03:23–03:28 WIB
+
+**Fase:** F009 (Ringkasan Mingguan)
+
+**Backend:**
+- ✅ New endpoint: `GET /api/report/weekly?date=YYYY-MM-DD`
+- ✅ Mon–Sun week range from any date
+- ✅ Daily breakdown: income, expense, debt_payment, profit per day
+- ✅ Weekly totals + averages (daily_income, daily_expense, daily_profit)
+- ✅ Top 5 expense categories with percentage
+- ✅ Income breakdown by category
+- ✅ Comparison with previous week: income/expense/profit trend %
+
+**Frontend:**
+- ✅ `Report.tsx`: Tab switcher 📅 Harian / 📆 Mingguan
+- ✅ `WeeklyReport.tsx` (NEW): Full weekly view — 5 sections
+  - Ringkasan Minggu Ini (total income/expense/profit)
+  - Rata-Rata Harian (3-col grid)
+  - Tren vs Minggu Lalu (⬆️/⬇️/➡️ with color)
+  - Per Hari (daily bars Mon–Sun)
+  - Top Pengeluaran (top 5 categories)
+- ✅ `WeeklyDayBar.tsx` (NEW): Horizontal bar per day
+  - Green = income, Red = expense
+  - "HARI INI" badge
+  - Profit +/- label
+
+**Result:** CI ✅ PASS → Squash-merged ([#12](https://github.com/lukim7711/driver-financial-manager/pull/12))
 
 ### Session 16 — 2026-02-14 03:07–03:17 WIB
 
 **Fase:** Budget Harian CRUD + Fix Prorate
-
-**Problem:** Budget harian di Home (Sisa Budget: dari Rp 115.571) berbeda dengan Settings (Total Harian: Rp 87.000) karena prorate biaya bulanan ditambahkan ke budget harian di BudgetBar.
-
-**Backend:**
-- ✅ New table: `daily_expenses` (id, name, emoji, amount, is_deleted, created_at)
-- ✅ Migration: `budget_bbm/makan/rokok/pulsa` dari `settings` → `daily_expenses` rows
-- ✅ New route: CRUD `/api/daily-expenses` (GET, POST, PUT, DELETE)
-- ✅ Dashboard: `budget.daily_total` = SUM(daily_expenses) saja (NO prorate)
-- ✅ Dashboard: field renamed `daily_expense` → `daily_total`
-- ✅ Debt query: added `WHERE is_deleted = 0` filter
-
-**Frontend:**
-- ✅ Settings.tsx: Complete rewrite — Budget Harian jadi CRUD dinamis
-- ✅ Settings.tsx: Shared `renderExpenseItem` + `renderAddForm` helpers (DRY)
-- ✅ Settings.tsx: Target date save terpisah (inline button)
-- ✅ Home.tsx: BudgetBar pakai `budget.daily_total` langsung (tanpa prorate)
-- ✅ BudgetBar.tsx: Label "Sisa Budget" → "Sisa Budget Harian"
-- ✅ Types: `DailyExpense` interface
-
-**Design Decision:**
-- BudgetBar = batas max pengeluaran harian (user control)
-- DailyTarget = target income minimum (include prorate + hutang)
-- Keduanya punya fungsi berbeda, tidak boleh dicampur
-
-**Result:** CI ✅ PASS → Squash-merged ([#11](https://github.com/lukim7711/driver-financial-manager/pull/11))
+**Result:** Squash-merged ([#11](https://github.com/lukim7711/driver-financial-manager/pull/11))
 
 ### Session 15 — 2026-02-14 02:48–02:56 WIB
 
 **Fase:** F012 (CRUD Hutang)
-
-**Backend:**
-- ✅ POST `/api/debts` — create new debt + auto-generate monthly schedules
-- ✅ PUT `/api/debts/:id` — edit platform, total, installment, due_day, late fee
-- ✅ DELETE `/api/debts/:id` — soft delete + cascade delete schedules
-- ✅ Schema migration: `is_deleted` + `created_at` columns on debts table
-- ✅ Durable Object: `migrateDebtsColumns()` — ALTER TABLE with try/catch
-- ✅ GET filter: `WHERE is_deleted = 0 OR is_deleted IS NULL`
-- ✅ Validasi: platform max 50 char, integer > 0, due_day 1-31, installments 1-120
-- ✅ Schedule generation: from due_day + total_installments, starting current month
-
-**Frontend:**
-- ✅ `AddDebtForm.tsx` (NEW) — Bottom sheet: platform, total, cicilan, tgl jatuh tempo, jumlah cicilan, tipe denda, rate denda
-- ✅ `EditDebtDialog.tsx` (NEW) — Partial edit with smart diff, only sends changed fields
-- ✅ `DeleteDebtDialog.tsx` (NEW) — Konfirmasi hapus + info sisa hutang
-- ✅ `DebtCard.tsx` — Added ✏️ edit + 🗑️ delete buttons in expanded view
-- ✅ `Debts.tsx` — FAB (+) button, empty state, CRUD state/handlers, render dialogs
-
-**Result:** CI ✅ PASS → Squash-merged ([#10](https://github.com/lukim7711/driver-financial-manager/pull/10))
+**Result:** Squash-merged ([#10](https://github.com/lukim7711/driver-financial-manager/pull/10))
 
 ### Session 14 — 2026-02-14 02:13–02:35 WIB
 
 **Fase:** F013 (Biaya Bulanan Dinamis)
-
-**Result:** CI ✅ PASS → Squash-merged ([#9](https://github.com/lukim7711/driver-financial-manager/pull/9))
+**Result:** Squash-merged ([#9](https://github.com/lukim7711/driver-financial-manager/pull/9))
 
 ### Session 13 — 2026-02-14 01:32–01:47 WIB
 
@@ -205,6 +171,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 03:17 WIB
-- **Total Sessions:** 16
-- **Current Phase:** v1.3.1 — Budget Harian CRUD (SHIPPED)
+- **Last Updated:** 2026-02-14 03:28 WIB
+- **Total Sessions:** 17
+- **Current Phase:** v1.4.0 — Weekly Report (SHIPPED)
