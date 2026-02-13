@@ -11,7 +11,6 @@ interface AddDebtFormProps {
   onSubmit: (data: {
     platform: string
     total_original: number
-    note?: string
     late_fee_rate: number
     late_fee_type: string
     schedules: Array<{
@@ -23,28 +22,9 @@ interface AddDebtFormProps {
   loading: boolean
 }
 
-function nextMonth(offset: number): string {
-  const now = new Date()
-  const wib = new Date(
-    now.getTime() + 7 * 60 * 60 * 1000
-  )
-  let y = wib.getFullYear()
-  let m = wib.getMonth() + offset
-  while (m > 11) {
-    m -= 12
-    y++
-  }
-  while (m < 0) {
-    m += 12
-    y--
-  }
-  const mm = String(m + 1).padStart(2, '0')
-  return `${y}-${mm}-15`
-}
-
-let keyCounter = 0
+let keySeq = 0
 function nextKey(): number {
-  return ++keyCounter
+  return ++keySeq
 }
 
 export function AddDebtForm({
@@ -54,34 +34,32 @@ export function AddDebtForm({
 }: AddDebtFormProps) {
   const [platform, setPlatform] = useState('')
   const [totalStr, setTotalStr] = useState('')
-  const [note, setNote] = useState('')
-  const [feeRate, setFeeRate] = useState('0')
-  const [error, setError] = useState('')
-
-  // Shortcut fields
-  const [scMonthly, setScMonthly] = useState('')
-  const [scDay, setScDay] = useState('1')
-  const [scCount, setScCount] = useState('5')
-
-  // Schedule rows
+  const [monthlyStr, setMonthlyStr] = useState('')
+  const [dayStr, setDayStr] = useState('1')
   const [rows, setRows] = useState<ScheduleRow[]>(
     []
   )
+  const [error, setError] = useState('')
+  const [generated, setGenerated] = useState(false)
 
   const total = parseInt(totalStr, 10) || 0
+  const monthly = parseInt(monthlyStr, 10) || 0
+  const day = parseInt(dayStr, 10) || 1
+
+  const autoCount =
+    total > 0 && monthly > 0
+      ? Math.ceil(total / monthly)
+      : 0
+
   const schedSum = rows.reduce(
     (s, r) => s + (parseInt(r.amount, 10) || 0),
     0
   )
   const isMatch = schedSum === total && total > 0
 
-  const handleAutoFill = () => {
-    const monthly = parseInt(scMonthly, 10) || 0
-    const day = parseInt(scDay, 10) || 1
-    const count = parseInt(scCount, 10) || 1
-    if (monthly <= 0 || total <= 0 || count <= 0)
-      return
-
+  const handleGenerate = () => {
+    if (total <= 0 || monthly <= 0) return
+    const count = Math.ceil(total / monthly)
     const now = new Date()
     const wib = new Date(
       now.getTime() + 7 * 60 * 60 * 1000
@@ -104,7 +82,6 @@ export function AddDebtForm({
         '0'
       )
       const dueDate = `${year}-${mm}-${dd}`
-
       const isLast = i === count - 1
       const amt = isLast
         ? remaining
@@ -116,7 +93,6 @@ export function AddDebtForm({
         due_date: dueDate,
         amount: String(amt),
       })
-
       month++
       if (month > 11) {
         month = 0
@@ -124,24 +100,38 @@ export function AddDebtForm({
       }
     }
     setRows(newRows)
+    setGenerated(true)
+    setError('')
   }
 
   const handleAddRow = () => {
     const lastDate =
       rows.length > 0
         ? rows[rows.length - 1]!.due_date
-        : nextMonth(1)
-    // Next month from last row
-    const d = new Date(lastDate)
-    d.setMonth(d.getMonth() + 1)
-    const y = d.getFullYear()
-    const mm = String(d.getMonth() + 1).padStart(
-      2,
-      '0'
-    )
-    const dd = lastDate.slice(8, 10)
-    const newDate = `${y}-${mm}-${dd}`
-
+        : ''
+    let newDate: string
+    if (lastDate) {
+      const d = new Date(lastDate)
+      d.setMonth(d.getMonth() + 1)
+      const y = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(
+        2,
+        '0'
+      )
+      const dd = lastDate.slice(8, 10)
+      newDate = `${y}-${mm}-${dd}`
+    } else {
+      const now = new Date()
+      const wib = new Date(
+        now.getTime() + 7 * 60 * 60 * 1000
+      )
+      const y = wib.getFullYear()
+      const mm = String(
+        wib.getMonth() + 1
+      ).padStart(2, '0')
+      const dd = String(day).padStart(2, '0')
+      newDate = `${y}-${mm}-${dd}`
+    }
     const remainAmt = Math.max(total - schedSum, 0)
     setRows([
       ...rows,
@@ -183,7 +173,7 @@ export function AddDebtForm({
     }
     if (rows.length === 0) {
       setError(
-        'Tambahkan minimal 1 jadwal cicilan'
+        'Tap \u26a1 Hitung Jadwal atau + Tambah Baris'
       )
       return
     }
@@ -193,19 +183,14 @@ export function AddDebtForm({
       )
       return
     }
-
     const schedules = rows.map((r) => ({
       due_date: r.due_date,
       amount: parseInt(r.amount, 10) || 0,
     }))
-
-    const rate = parseFloat(feeRate) || 0
-
     await onSubmit({
       platform: platform.trim(),
       total_original: total,
-      note: note.trim() || undefined,
-      late_fee_rate: rate / 100,
+      late_fee_rate: 0,
       late_fee_type: 'pct_monthly',
       schedules,
     })
@@ -213,8 +198,15 @@ export function AddDebtForm({
 
   const inputCls =
     'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-blue-400 focus:outline-none'
-  const labelCls =
-    'text-xs font-medium text-gray-500'
+
+  const formatShort = (d: string): string => {
+    const dt = new Date(d + 'T00:00:00')
+    return dt.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: '2-digit',
+    })
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
@@ -222,14 +214,14 @@ export function AddDebtForm({
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">
-            \u2795 Tambah Hutang Baru
+            Tambah Hutang
           </h2>
           <button
             type="button"
             onClick={onCancel}
-            className="text-gray-400 text-xl"
+            className="text-gray-400 text-xl leading-none"
           >
-            \u2715
+            \u00d7
           </button>
         </div>
 
@@ -239,10 +231,10 @@ export function AddDebtForm({
           </p>
         )}
 
-        {/* Name + Total */}
+        {/* Section 1: Nama + Total */}
         <div className="space-y-3">
           <div>
-            <label className={labelCls}>
+            <label className="text-xs font-medium text-gray-500">
               Nama / Platform
             </label>
             <input
@@ -257,7 +249,7 @@ export function AddDebtForm({
             />
           </div>
           <div>
-            <label className={labelCls}>
+            <label className="text-xs font-medium text-gray-500">
               Total Hutang (Rp)
             </label>
             <input
@@ -273,172 +265,135 @@ export function AddDebtForm({
           </div>
         </div>
 
-        {/* Shortcut */}
-        <div className="rounded-xl bg-gray-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-gray-500">
-            \u26a1 Shortcut Isi Cepat
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-[10px] text-gray-400">
-                Cicilan/Bln
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={scMonthly}
-                onChange={(e) =>
-                  setScMonthly(e.target.value)
-                }
-                placeholder="162845"
-                className={`mt-0.5 ${inputCls} text-xs py-2`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400">
-                Tgl
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={scDay}
-                onChange={(e) =>
-                  setScDay(e.target.value)
-                }
-                min={1}
-                max={31}
-                className={`mt-0.5 ${inputCls} text-xs py-2`}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400">
-                Brp Kali
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={scCount}
-                onChange={(e) =>
-                  setScCount(e.target.value)
-                }
-                min={1}
-                max={120}
-                className={`mt-0.5 ${inputCls} text-xs py-2`}
-              />
-            </div>
+        {/* Section 2: Cicilan + Tgl */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-gray-500">
+              Cicilan/Bulan (Rp)
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={monthlyStr}
+              onChange={(e) => {
+                setMonthlyStr(e.target.value)
+                setGenerated(false)
+              }}
+              placeholder="162845"
+              className={`mt-1 ${inputCls}`}
+            />
           </div>
-          <button
-            type="button"
-            onClick={handleAutoFill}
-            className="w-full rounded-lg bg-amber-100 py-2 text-xs font-bold text-amber-700 transition-all active:scale-95"
-          >
-            \u26a1 Isi Rata (auto-fill)
-          </button>
+          <div>
+            <label className="text-xs font-medium text-gray-500">
+              Tgl Bayar
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={dayStr}
+              onChange={(e) => {
+                setDayStr(e.target.value)
+                setGenerated(false)
+              }}
+              min={1}
+              max={31}
+              className={`mt-1 ${inputCls}`}
+            />
+          </div>
         </div>
 
-        {/* Schedule Rows */}
-        <div>
-          <p className="text-xs font-semibold text-gray-500 mb-2">
-            \ud83d\udcc5 Jadwal Cicilan
-            {rows.length > 0 && (
-              <span className="ml-1 font-normal text-gray-400">
-                ({rows.length} jadwal)
-              </span>
-            )}
+        {/* Auto-calc hint */}
+        {autoCount > 0 && !generated && (
+          <p className="text-xs text-gray-400 -mt-2">
+            = {autoCount}x cicilan
           </p>
+        )}
 
-          {rows.length === 0 ? (
-            <div className="rounded-xl bg-gray-50 p-4 text-center">
-              <p className="text-xs text-gray-400">
-                Belum ada jadwal.
-              </p>
-              <p className="text-xs text-gray-400">
-                Gunakan \u26a1 Isi Rata atau \u2795
-                Tambah manual.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+        {/* Generate button */}
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={total <= 0 || monthly <= 0}
+          className="w-full rounded-xl bg-amber-50 border border-amber-200 py-2.5 text-sm font-semibold text-amber-700 transition-all active:scale-95 disabled:opacity-40"
+        >
+          \u26a1 Hitung Jadwal
+        </button>
+
+        {/* Section 3: Schedule rows */}
+        {rows.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">
+              Jadwal Cicilan
+              <span className="ml-1 font-normal text-gray-400">
+                {rows.length}x
+              </span>
+            </p>
+            <div className="space-y-1.5 max-h-52 overflow-y-auto">
               {rows.map((r, idx) => {
                 const amt =
                   parseInt(r.amount, 10) || 0
+                const firstAmt =
+                  parseInt(
+                    rows[0]?.amount ?? '0',
+                    10
+                  ) || 0
                 const isLast =
                   idx === rows.length - 1 &&
                   rows.length > 1 &&
-                  amt !==
-                    (parseInt(
-                      rows[0]!.amount,
-                      10
-                    ) || 0)
+                  amt !== firstAmt
 
                 return (
                   <div
                     key={r.key}
-                    className="flex items-center gap-2 rounded-xl bg-gray-50 p-2"
+                    className="flex items-center gap-2"
                   >
-                    <span className="text-xs font-bold text-gray-400 w-5">
-                      {idx + 1}
+                    <span className="text-xs text-gray-400 w-12 shrink-0">
+                      {formatShort(r.due_date)}
                     </span>
                     <input
-                      type="date"
-                      value={r.due_date}
+                      type="number"
+                      inputMode="numeric"
+                      value={r.amount}
                       onChange={(e) =>
                         handleRowChange(
                           r.key,
-                          'due_date',
+                          'amount',
                           e.target.value
                         )
                       }
-                      className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:border-blue-400 focus:outline-none"
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs text-right focus:outline-none ${
+                        isLast
+                          ? 'border-amber-300 bg-amber-50 text-amber-700'
+                          : 'border-gray-200'
+                      }`}
                     />
-                    <div className="relative">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={r.amount}
-                        onChange={(e) =>
-                          handleRowChange(
-                            r.key,
-                            'amount',
-                            e.target.value
-                          )
-                        }
-                        className={`w-24 rounded-lg border px-2 py-1.5 text-xs text-right focus:outline-none ${
-                          isLast
-                            ? 'border-amber-300 bg-amber-50'
-                            : 'border-gray-200'
-                        }`}
-                      />
-                      {isLast && (
-                        <span className="absolute -top-1.5 -right-1 text-[10px]">
-                          \u26a1
-                        </span>
-                      )}
-                    </div>
+                    {isLast && (
+                      <span className="text-xs">\u26a1</span>
+                    )}
                     <button
                       type="button"
                       onClick={() =>
                         handleDeleteRow(r.key)
                       }
-                      className="text-red-400 text-sm active:scale-90"
+                      className="text-red-300 text-sm active:scale-90 hover:text-red-500"
                     >
-                      \ud83d\uddd1\ufe0f
+                      \u2715
                     </button>
                   </div>
                 )
               })}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Add row */}
-          <button
-            type="button"
-            onClick={handleAddRow}
-            className="mt-2 w-full rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-xs font-semibold text-gray-400 transition-all active:scale-95"
-          >
-            \u2795 Tambah Jadwal
-          </button>
-        </div>
+        {/* Add row */}
+        <button
+          type="button"
+          onClick={handleAddRow}
+          className="w-full rounded-xl border-2 border-dashed border-gray-200 py-2 text-xs font-medium text-gray-400 transition-all active:scale-95"
+        >
+          + Tambah Baris
+        </button>
 
         {/* Total checker */}
         {rows.length > 0 && (
@@ -449,48 +404,11 @@ export function AddDebtForm({
                 : 'bg-red-50 text-red-600'
             }`}
           >
-            Total jadwal:{' '}
-            {formatRupiah(schedSum)} /{' '}
-            {formatRupiah(total)}{' '}
-            {isMatch ? '\u2705 Cocok' : '\u26a0\ufe0f Belum cocok'}
+            {isMatch
+              ? `\u2705 ${formatRupiah(schedSum)} — cocok`
+              : `\u26a0\ufe0f ${formatRupiah(schedSum)} / ${formatRupiah(total)}`}
           </div>
         )}
-
-        {/* Extra fields */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>
-              Denda (%)
-            </label>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={feeRate}
-              onChange={(e) =>
-                setFeeRate(e.target.value)
-              }
-              placeholder="0"
-              step="0.01"
-              min={0}
-              className={`mt-1 ${inputCls}`}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>
-              Catatan
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) =>
-                setNote(e.target.value)
-              }
-              placeholder="opsional"
-              className={`mt-1 ${inputCls}`}
-              maxLength={100}
-            />
-          </div>
-        </div>
 
         {/* Submit */}
         <button
@@ -501,7 +419,7 @@ export function AddDebtForm({
         >
           {loading
             ? 'Menyimpan...'
-            : '\ud83d\udcbe Simpan Hutang'}
+            : 'Simpan Hutang'}
         </button>
       </div>
     </div>
