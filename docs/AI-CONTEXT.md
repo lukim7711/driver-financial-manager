@@ -1,14 +1,14 @@
 # 🧭 AI-CONTEXT
 # Money Manager — AI Navigation Map
 
-> **Version:** 4.1  
+> **Version:** 5.0  
 > **Last Updated:** 2026-02-14  
 
 ---
 
 ## 1. Project Summary
 
-**Money Manager** adalah personal financial dashboard (Web PWA) untuk seorang driver ojol yang ingin melunasi hutang Rp 8.851.200 dalam 2 bulan. App mengutamakan kecepatan input (4 tap, 0 ketik, < 3 detik per transaksi) dan real-time tracking hutang.
+**Money Manager** adalah personal financial dashboard (Web PWA) untuk seorang driver ojol yang ingin melunasi hutang Rp 8.285.119 dalam 2 bulan. App mengutamakan kecepatan input (4 tap, 0 ketik, < 3 detik per transaksi) dan real-time tracking hutang.
 
 ---
 
@@ -81,7 +81,7 @@ Durable Objects (SQLite)
 | `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save |
 | `frontend/src/pages/OcrUpload.tsx` | Upload struk foto → OCR → auto-parse |
 | `frontend/src/pages/Debts.tsx` | CRUD hutang + progress + bayar cicilan + FAB tambah |
-| `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat |
+| `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat + export CSV |
 | `frontend/src/pages/Settings.tsx` | Target date + CRUD budget harian + CRUD biaya bulanan |
 | `frontend/src/components/DailyTarget.tsx` | Target harian minimal: progress bar + gap + breakdown |
 | `frontend/src/components/SummaryCard.tsx` | Ringkasan pemasukan/pengeluaran/profit hari ini |
@@ -95,9 +95,13 @@ Durable Objects (SQLite)
 | `frontend/src/components/AddDebtForm.tsx` | Bottom sheet form tambah hutang baru |
 | `frontend/src/components/EditDebtDialog.tsx` | Bottom sheet form edit hutang |
 | `frontend/src/components/DeleteDebtDialog.tsx` | Dialog konfirmasi hapus hutang |
+| `frontend/src/components/ExportCsvButton.tsx` | Tombol export CSV (harian & mingguan) |
+| `frontend/src/components/OnboardingOverlay.tsx` | 5-step walkthrough modal |
+| `frontend/src/hooks/use-onboarding.ts` | localStorage hook for onboarding state |
 | `frontend/src/hooks/` | useApi, useTransactions, useDebts |
 | `frontend/src/lib/api.ts` | API client base |
 | `frontend/src/lib/format.ts` | Format Rupiah (Rp 50.000), tanggal |
+| `frontend/src/lib/csv-export.ts` | CSV generation + browser download utility |
 | `frontend/src/types/index.ts` | Shared TypeScript interfaces |
 | `frontend/public/manifest.json` | PWA config |
 | `frontend/public/sw.js` | Service worker for caching |
@@ -118,6 +122,9 @@ Durable Objects (SQLite)
 | `api/src/db/durable-object.ts` | DO class: SQLite init, migrations |
 | `api/src/db/schema.ts` | Table definitions (SQL string) |
 | `api/src/db/seed.ts` | Pre-loaded hutang data (5 platform) |
+| `api/src/utils/db.ts` | Shared DB utilities (getDB, queryDB) |
+| `api/src/utils/date.ts` | Shared date utilities (getNowISO) |
+| `api/src/utils/id.ts` | Shared ID generator (generateId) |
 | `api/wrangler.toml` | CF Worker config: DO bindings |
 
 ---
@@ -154,6 +161,12 @@ Durable Objects (SQLite)
 - Editable di Settings (default 13 April 2026)
 - Progress = (total_original - total_remaining) / total_original × 100%
 
+### 5.7 Export CSV
+- CSV generated client-side (no backend endpoint)
+- Reuses data from `/api/report/daily`
+- BOM header for Excel compatibility
+- Filename: `laporan-harian-YYYY-MM-DD.csv` atau `laporan-mingguan-YYYY-MM-DD.csv`
+
 ---
 
 ## 6. Current Status
@@ -165,15 +178,21 @@ Durable Objects (SQLite)
 | v1.2.0 Monthly Expenses + Target Date | ✅ SHIPPED |
 | v1.3.0 Debt CRUD | ✅ SHIPPED |
 | v1.3.1 Budget Harian CRUD + Fix | ✅ SHIPPED |
+| v2.0.0 Onboarding + Refactor DRY | ✅ SHIPPED |
+| v2.1.0 Export CSV | ✅ SHIPPED |
 
 ---
 
-## 7. Future Features
+## 7. Future Features (Backlog)
 
 | ID | Nama | Detail |
 |----|------|--------|
-| F009 | Ringkasan Mingguan | Weekly summary report |
-| F011 | Help/Onboarding | First-time user guide |
+| F-F01 | Google Maps Integration | Pin alamat pengirim-penerima per order |
+| F-F02 | Trip Tracking | Data tracking lokasi, waktu, jarak, rute |
+| F-F03 | AI Learning | Analisis pola penghasilan, prediksi, saran penghematan |
+| F-F04 | Grafik/Chart Visual | Chart pengeluaran per kategori, trend mingguan/bulanan |
+| F-F06 | Notifikasi Proaktif | Push notification H-3 jatuh tempo via service worker |
+| F-F07 | Multi-period Report | Laporan bulanan, custom date range |
 
 ---
 
@@ -185,4 +204,5 @@ Durable Objects (SQLite)
 | 2.0 | 2026-02-13 | Complete rewrite |
 | 3.0 | 2026-02-14 | Added Daily Target, future features |
 | 4.0 | 2026-02-14 | F012+F013+F014 shipped |
-| 4.1 | 2026-02-14 | Budget harian CRUD: daily_expenses table, separated BudgetBar from prorate, updated business rules (5.3) |
+| 4.1 | 2026-02-14 | Budget harian CRUD: daily_expenses table, separated BudgetBar from prorate |
+| 5.0 | 2026-02-14 | v2.1.0: Export CSV, Onboarding, DRY refactor, updated file map + business rules |

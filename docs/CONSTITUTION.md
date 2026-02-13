@@ -1,9 +1,9 @@
 # ⚖️ CONSTITUTION
 # Money Manager — Technical Rules & Stack
 
-> **Version:** 2.1  
+> **Version:** 2.2  
 > **Status:** Active  
-> **Last Updated:** 2026-02-13  
+> **Last Updated:** 2026-02-14  
 
 ---
 
@@ -58,6 +58,12 @@
 - Akan dipakai untuk future AI learning features
 - Saat ini belum dipakai di MVP (hemat neuron)
 
+#### Kenapa CSV Export client-side (bukan API endpoint)?
+- Data sudah tersedia dari `/api/report/daily` — tidak perlu endpoint baru
+- Mengurangi beban Workers CPU (10ms limit)
+- BOM header + Blob API cukup untuk generate CSV di browser
+- Tidak ada data sensitif yang perlu server-side processing
+
 ---
 
 ## 2. Project Structure
@@ -71,8 +77,9 @@ driver-financial-manager/
 │   │   ├── pages/                 # Page-level components (1 per layar)
 │   │   │   ├── Home.tsx           # Dashboard utama
 │   │   │   ├── QuickInput.tsx     # Input transaksi (tap-based)
+│   │   │   ├── OcrUpload.tsx      # Upload struk OCR
 │   │   │   ├── Debts.tsx          # Status hutang
-│   │   │   ├── Report.tsx         # Laporan harian/mingguan
+│   │   │   ├── Report.tsx         # Laporan harian/mingguan + export CSV
 │   │   │   └── Settings.tsx       # Budget & preferences
 │   │   ├── components/            # Reusable UI components
 │   │   │   ├── PresetButton.tsx   # Tombol preset nominal
@@ -81,14 +88,18 @@ driver-financial-manager/
 │   │   │   ├── TransactionList.tsx # List transaksi + tap to edit
 │   │   │   ├── DebtCard.tsx       # Card per hutang
 │   │   │   ├── OcrUpload.tsx      # Upload + preview struk
-│   │   │   └── Modal.tsx          # Edit/delete modal
+│   │   │   ├── Modal.tsx          # Edit/delete modal
+│   │   │   ├── ExportCsvButton.tsx # Export CSV (daily & weekly)
+│   │   │   └── OnboardingOverlay.tsx # Walkthrough modal
 │   │   ├── hooks/                 # Custom React hooks
 │   │   │   ├── useApi.ts          # Fetch wrapper ke Workers API
 │   │   │   ├── useTransactions.ts # Transaction state management
-│   │   │   └── useDebts.ts        # Debt state management
+│   │   │   ├── useDebts.ts        # Debt state management
+│   │   │   └── use-onboarding.ts  # Onboarding localStorage hook
 │   │   ├── lib/                   # Utility libraries
 │   │   │   ├── api.ts             # API client (base URL, headers)
-│   │   │   └── format.ts          # Format Rupiah, tanggal
+│   │   │   ├── format.ts          # Format Rupiah, tanggal
+│   │   │   └── csv-export.ts      # CSV generation + download
 │   │   └── types/                 # TypeScript type definitions
 │   │       └── index.ts           # Shared types (Transaction, Debt, etc.)
 │   ├── public/
@@ -106,30 +117,32 @@ driver-financial-manager/
 │   │   ├── routes/                # API route handlers
 │   │   │   ├── transaction.ts     # CRUD /api/transactions
 │   │   │   ├── debt.ts            # CRUD /api/debts + /api/debts/:id/pay
+│   │   │   ├── daily-expense.ts   # CRUD /api/daily-expenses
+│   │   │   ├── monthly-expense.ts # CRUD /api/monthly-expenses
 │   │   │   ├── report.ts          # GET /api/report/daily, /weekly
-│   │   │   ├── ocr.ts             # POST /api/ocr (proxy to ocr.space)
-│   │   │   └── settings.ts        # GET/PUT /api/settings
+│   │   │   ├── ocr.ts             # POST /api/ocr
+│   │   │   ├── settings.ts        # GET/PUT /api/settings
+│   │   │   └── dashboard.ts       # GET /api/dashboard
 │   │   ├── db/                    # Database layer
 │   │   │   ├── durable-object.ts  # DO class with SQLite schema init
-│   │   │   ├── schema.sql         # CREATE TABLE statements
-│   │   │   └── seed.sql           # INSERT pre-loaded hutang data
-│   │   ├── services/              # Business logic
-│   │   │   ├── transaction.ts     # Transaction CRUD logic
-│   │   │   ├── debt.ts            # Debt payment + progress calculation
-│   │   │   ├── report.ts          # Aggregation queries for reports
-│   │   │   └── budget.ts          # Budget checking logic
+│   │   │   ├── schema.ts          # CREATE TABLE statements
+│   │   │   └── seed.ts            # INSERT pre-loaded hutang data
 │   │   └── utils/                 # Shared utilities
-│   │       ├── format.ts          # Format currency, date
-│   │       └── response.ts        # Standard API response helpers
+│   │       ├── db.ts              # getDB, queryDB, Bindings type
+│   │       ├── date.ts            # getNowISO
+│   │       └── id.ts              # generateId
 │   ├── wrangler.toml              # CF Worker config
 │   └── package.json
 │
+├── shared/                        # Shared types (single source of truth)
+│   └── types.ts                   # Transaction, Debt, Settings interfaces
+│
 ├── docs/                          # Documentation (Spec-Driven)
 │   ├── PRD.md                     # Product Requirements Document
-│   ├── AI-CONTEXT.md              # AI Navigation Map
-│   ├── CONSTITUTION.md            # This file — Technical Rules
+│   ├── AI-CONTEXT.md              # AI Navigation Map (this file)
+│   ├── CONSTITUTION.md            # Technical Rules & Stack
 │   ├── PROGRESS.md                # Progress & session tracking
-│   ├── features/                  # Per-feature specs (Fase 4)
+│   ├── features/                  # Per-feature specs
 │   └── adr/                       # Architecture Decision Records
 │
 ├── .github/
@@ -165,6 +178,14 @@ driver-financial-manager/
 | GET | `/api/settings` | Get all settings |
 | PUT | `/api/settings` | Update settings |
 | GET | `/api/dashboard` | Home dashboard aggregate data |
+| GET | `/api/daily-expenses` | List budget harian |
+| POST | `/api/daily-expenses` | Tambah budget harian |
+| PUT | `/api/daily-expenses/:id` | Update budget harian |
+| DELETE | `/api/daily-expenses/:id` | Hapus budget harian |
+| GET | `/api/monthly-expenses` | List biaya bulanan |
+| POST | `/api/monthly-expenses` | Tambah biaya bulanan |
+| PUT | `/api/monthly-expenses/:id` | Update biaya bulanan |
+| DELETE | `/api/monthly-expenses/:id` | Hapus biaya bulanan |
 
 ### 3.2 Request/Response Format
 
@@ -177,12 +198,26 @@ driver-financial-manager/
 ### 3.3 Standard Response
 
 ```typescript
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
+interface ApiSuccessResponse<T> {
+  success: true
+  data: T
 }
+
+interface ApiErrorResponse {
+  success: false
+  error: string
+}
+
+type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse
 ```
+
+**Important:** `ApiResponse<T>` is a discriminated union. Always narrow with `if (!res.success)` before accessing `.error`, and only access `.data` after confirming `res.success === true`.
+
+### 3.4 Client-Side Features (No API Endpoint)
+
+| Feature | Description |
+|---------|-------------|
+| Export CSV | CSV generated in browser from existing report data. Uses `csv-export.ts` utility. |
 
 ---
 
@@ -205,6 +240,7 @@ interface ApiResponse<T> {
 - **Styling:** Tailwind CSS utility classes, no inline styles, no CSS modules
 - **Mobile-first:** Semua styling dimulai dari mobile viewport
 - **Accessibility:** Semantic HTML, aria-labels pada interactive elements
+- **Discriminated unions:** Always narrow `ApiResponse<T>` properly before accessing `.error` or `.data`
 
 ### 4.3 Backend Rules
 
@@ -215,6 +251,7 @@ interface ApiResponse<T> {
 - **Error handling:** Try-catch di setiap route, return standard ApiResponse
 - **Validation:** Validate semua input di route level sebelum service call
 - **No hardcoded values:** Gunakan `settings` table atau constants file
+- **Shared utils:** Import from `utils/db.ts`, `utils/date.ts`, `utils/id.ts`
 
 ### 4.4 Database Rules
 
@@ -222,7 +259,7 @@ interface ApiResponse<T> {
 - **Soft delete** — set `is_deleted = 1`, jangan DELETE row
 - **Timestamps dalam ISO 8601** string format
 - **Foreign keys enforced** via SQL constraints
-- **Seed data** — hutang pre-loaded via `seed.sql` saat DO pertama kali init
+- **Seed data** — hutang pre-loaded via `seed.ts` saat DO pertama kali init
 
 ---
 
@@ -238,7 +275,7 @@ interface ApiResponse<T> {
 ### 5.2 Commit Convention
 
 ```
-type: short description
+type(scope): short description
 
 Types:
 - feat: Fitur baru
@@ -300,3 +337,4 @@ Types:
 | 1.0 | 2026-02-13 | Initial template (empty) |
 | 2.0 | 2026-02-13 | Complete tech stack, code rules, API contract, deployment config |
 | 2.1 | 2026-02-13 | Add 4 debt CRUD endpoints: POST/PUT/DELETE /api/debts, PUT /api/debts/:id/schedule/:schedule_id |
+| 2.2 | 2026-02-14 | v2.1.0: Add CSV export docs, complete endpoint list (22), shared utils, discriminated union note, ApiResponse type spec |
