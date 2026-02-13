@@ -106,7 +106,7 @@ export function OnboardingOverlay({
         {/* Tip box */}
         <div className="mb-5 rounded-lg bg-emerald-50 px-3 py-2">
           <p className="text-center text-xs text-emerald-700">
-            \ud83d\udca1 {current.tip}
+            {'\ud83d\udca1'} {current.tip}
           </p>
         </div>
 
