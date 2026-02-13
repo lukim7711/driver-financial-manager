@@ -14,7 +14,7 @@ export class MoneyManagerDB extends DurableObject<Env> {
   private ensureInitialized() {
     if (this.initialized) return
 
-    // Create tables if not exist (includes monthly_expenses)
+    // Create tables if not exist
     this.ctx.storage.sql.exec(SCHEMA_SQL)
 
     // Check if seed data already exists (idempotent)
@@ -32,11 +32,13 @@ export class MoneyManagerDB extends DurableObject<Env> {
     // F013 Migration: move budget_rt → monthly_expenses
     this.migrateBudgetRt()
 
+    // F012 Migration: add is_deleted + created_at to debts
+    this.migrateDebtsColumns()
+
     this.initialized = true
   }
 
   private migrateBudgetRt() {
-    // Check if budget_rt exists in settings
     const rtCursor = this.ctx.storage.sql.exec(
       `SELECT value FROM settings WHERE key = 'budget_rt'`
     )
@@ -45,21 +47,18 @@ export class MoneyManagerDB extends DurableObject<Env> {
 
     const rtValue = Number(rtRow.value) || 0
     if (rtValue <= 0) {
-      // Just delete the old key
       this.ctx.storage.sql.exec(
         `DELETE FROM settings WHERE key = 'budget_rt'`
       )
       return
     }
 
-    // Check if me-rt already exists in monthly_expenses
     const existCursor = this.ctx.storage.sql.exec(
       `SELECT id FROM monthly_expenses WHERE id = 'me-rt'`
     )
     const existRow = [...existCursor][0]
 
     if (!existRow) {
-      // Migrate: create monthly_expenses row from budget_rt
       this.ctx.storage.sql.exec(
         `INSERT INTO monthly_expenses
           (id, name, emoji, amount, is_deleted, created_at)
@@ -69,7 +68,6 @@ export class MoneyManagerDB extends DurableObject<Env> {
         rtValue
       )
     } else {
-      // Update existing me-rt with budget_rt value
       this.ctx.storage.sql.exec(
         `UPDATE monthly_expenses
          SET amount = ? WHERE id = 'me-rt'`,
@@ -77,10 +75,29 @@ export class MoneyManagerDB extends DurableObject<Env> {
       )
     }
 
-    // Remove old budget_rt from settings
     this.ctx.storage.sql.exec(
       `DELETE FROM settings WHERE key = 'budget_rt'`
     )
+  }
+
+  private migrateDebtsColumns() {
+    // Add is_deleted column if missing
+    try {
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`
+      )
+    } catch {
+      // Column already exists, ignore
+    }
+
+    // Add created_at column if missing
+    try {
+      this.ctx.storage.sql.exec(
+        `ALTER TABLE debts ADD COLUMN created_at TEXT`
+      )
+    } catch {
+      // Column already exists, ignore
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
