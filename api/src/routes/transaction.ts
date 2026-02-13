@@ -1,13 +1,5 @@
 import { Hono } from 'hono'
-import type { ApiResponse, Transaction } from '../types'
-
-const VALID_TYPES = ['income', 'expense', 'debt_payment'] as const
-
-const VALID_CATEGORIES_INCOME = ['order', 'bonus', 'lainnya_masuk'] as const
-const VALID_CATEGORIES_EXPENSE = [
-  'bbm', 'makan', 'rokok', 'pulsa', 'parkir',
-  'rt', 'service', 'lainnya_keluar',
-] as const
+import type { ApiResponse } from '../types'
 
 type Bindings = {
   DB: DurableObjectNamespace
@@ -21,8 +13,13 @@ function getDB(env: Bindings) {
   return env.DB.get(id)
 }
 
-function generateId(): string {
-  return crypto.randomUUID()
+async function queryDB(db: DurableObjectStub, sql: string, params: unknown[] = []) {
+  const res = await db.fetch(new Request('http://do/query', {
+    method: 'POST',
+    body: JSON.stringify({ query: sql, params }),
+  }))
+  const result = await res.json() as ApiResponse<Record<string, unknown>[]>
+  return result.data || []
 }
 
 function getNowISO(): string {
@@ -33,91 +30,70 @@ function getNowISO(): string {
   return `${iso}+07:00`
 }
 
-interface CreateTransactionBody {
-  type: string
-  amount: number
-  category: string
-  note?: string
-  source?: string
-}
+const VALID_TYPES = ['income', 'expense', 'debt_payment'] as const
+const VALID_INCOME_CATS = ['order', 'tips', 'bonus', 'insentif', 'lainnya'] as const
+const VALID_EXPENSE_CATS = ['bbm', 'makan', 'rokok', 'pulsa', 'parkir', 'service', 'rt', 'lainnya'] as const
+const VALID_SOURCES = ['manual', 'ocr'] as const
 
 // POST /api/transactions
 route.post('/', async (c) => {
   try {
-    const body = await c.req.json<CreateTransactionBody>()
-    const { type, amount, category, note, source } = body
+    const body = await c.req.json<{
+      type: string
+      amount: number
+      category: string
+      note?: string
+      source?: string
+      debt_id?: string
+    }>()
 
-    // Validate type
+    const { type, amount, category, note, source, debt_id } = body
+
     if (!type || !VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Tipe harus income, expense, atau debt_payment' },
+        { success: false, error: `Invalid type. Must be: ${VALID_TYPES.join(', ')}` },
         400
       )
     }
 
-    // Validate amount
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
+    if (!amount || amount <= 0 || !Number.isInteger(amount)) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Nominal harus lebih dari 0' },
-        400
-      )
-    }
-    if (amount > 10_000_000) {
-      return c.json<ApiResponse<never>>(
-        { success: false, error: 'Nominal maksimal Rp 10.000.000' },
+        { success: false, error: 'Amount harus integer positif (Rupiah)' },
         400
       )
     }
 
-    // Validate category
-    const allCategories = [
-      ...VALID_CATEGORIES_INCOME,
-      ...VALID_CATEGORIES_EXPENSE,
-    ] as readonly string[]
-    if (!category || !allCategories.includes(category)) {
+    if (type === 'income' && !VALID_INCOME_CATS.includes(category as typeof VALID_INCOME_CATS[number])) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Kategori tidak valid' },
+        { success: false, error: `Invalid income category. Must be: ${VALID_INCOME_CATS.join(', ')}` },
         400
       )
     }
 
-    const id = generateId()
-    const createdAt = getNowISO()
-    const txSource = source || 'manual'
+    if (type === 'expense' && !VALID_EXPENSE_CATS.includes(category as typeof VALID_EXPENSE_CATS[number])) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: `Invalid expense category. Must be: ${VALID_EXPENSE_CATS.join(', ')}` },
+        400
+      )
+    }
+
+    const validSource = source && VALID_SOURCES.includes(source as typeof VALID_SOURCES[number])
+      ? source
+      : 'manual'
 
     const db = getDB(c.env)
-    const res = await db.fetch(new Request('http://do/query', {
-      method: 'POST',
-      body: JSON.stringify({
-        query: `INSERT INTO transactions (id, created_at, type, amount, category, note, source, debt_id, is_deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0)`,
-        params: [id, createdAt, type, amount, category, note || '', txSource],
-      }),
-    }))
+    const id = crypto.randomUUID()
+    const createdAt = getNowISO()
 
-    if (!res.ok) {
-      const err = await res.json() as ApiResponse<never>
-      return c.json<ApiResponse<never>>(
-        { success: false, error: err.error || 'Gagal menyimpan transaksi' },
-        500
-      )
-    }
+    await queryDB(db,
+      `INSERT INTO transactions (id, created_at, type, amount, category, note, source, debt_id, is_deleted)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      [id, createdAt, type, amount, category, note || '', validSource, debt_id || null]
+    )
 
-    const txData: Transaction = {
-      id,
-      created_at: createdAt,
-      type: type as Transaction['type'],
-      amount,
-      category,
-      note: note || '',
-      source: txSource as Transaction['source'],
-      debt_id: null,
-      is_deleted: 0,
-    }
-
-    return c.json<ApiResponse<Transaction>>({
+    return c.json<ApiResponse<unknown>>({
       success: true,
-      data: txData,
+      data: { id, created_at: createdAt, type, amount, category, note: note || '', source: validSource },
     }, 201)
   } catch (error) {
     return c.json<ApiResponse<never>>(
@@ -127,32 +103,144 @@ route.post('/', async (c) => {
   }
 })
 
-// GET /api/transactions?date=YYYY-MM-DD
+// GET /api/transactions
 route.get('/', async (c) => {
   try {
-    const date = c.req.query('date')
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const db = getDB(c.env)
+    const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
+    const offset = Math.max(Number(c.req.query('offset')) || 0, 0)
+
+    const rows = await queryDB(db,
+      `SELECT * FROM transactions WHERE is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    )
+
+    return c.json<ApiResponse<unknown>>({
+      success: true,
+      data: rows,
+    })
+  } catch (error) {
+    return c.json<ApiResponse<never>>(
+      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      500
+    )
+  }
+})
+
+// PUT /api/transactions/:id
+route.put('/:id', async (c) => {
+  try {
+    const txId = c.req.param('id')
+    const db = getDB(c.env)
+
+    // Fetch existing
+    const rows = await queryDB(db,
+      `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
+      [txId]
+    )
+    if (rows.length === 0) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Parameter date wajib, format: YYYY-MM-DD' },
+        { success: false, error: 'Transaksi tidak ditemukan' },
+        404
+      )
+    }
+
+    const existing = rows[0]!
+    if (String(existing.type) === 'debt_payment') {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: 'Transaksi pembayaran hutang tidak bisa diedit' },
+        403
+      )
+    }
+
+    const body = await c.req.json<{
+      amount?: number
+      category?: string
+      note?: string
+    }>()
+
+    const newAmount = body.amount ?? Number(existing.amount)
+    const newCategory = body.category ?? String(existing.category)
+    const newNote = body.note ?? String(existing.note ?? '')
+
+    if (newAmount <= 0 || !Number.isInteger(newAmount)) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: 'Amount harus integer positif' },
         400
       )
     }
 
-    const db = getDB(c.env)
-    const res = await db.fetch(new Request('http://do/query', {
-      method: 'POST',
-      body: JSON.stringify({
-        query: `SELECT * FROM transactions
-                WHERE created_at LIKE ? AND is_deleted = 0
-                ORDER BY created_at DESC`,
-        params: [`${date}%`],
-      }),
-    }))
+    const type = String(existing.type)
+    if (type === 'income' && !VALID_INCOME_CATS.includes(newCategory as typeof VALID_INCOME_CATS[number])) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: `Invalid income category` },
+        400
+      )
+    }
+    if (type === 'expense' && !VALID_EXPENSE_CATS.includes(newCategory as typeof VALID_EXPENSE_CATS[number])) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: `Invalid expense category` },
+        400
+      )
+    }
 
-    const result = await res.json() as ApiResponse<Transaction[]>
-    return c.json<ApiResponse<Transaction[]>>({
+    const updatedAt = getNowISO()
+
+    await queryDB(db,
+      `UPDATE transactions SET amount = ?, category = ?, note = ? WHERE id = ?`,
+      [newAmount, newCategory, newNote, txId]
+    )
+
+    return c.json<ApiResponse<unknown>>({
       success: true,
-      data: result.data || [],
+      data: {
+        id: txId,
+        amount: newAmount,
+        category: newCategory,
+        note: newNote,
+        updated_at: updatedAt,
+      },
+    })
+  } catch (error) {
+    return c.json<ApiResponse<never>>(
+      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      500
+    )
+  }
+})
+
+// DELETE /api/transactions/:id
+route.delete('/:id', async (c) => {
+  try {
+    const txId = c.req.param('id')
+    const db = getDB(c.env)
+
+    const rows = await queryDB(db,
+      `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
+      [txId]
+    )
+    if (rows.length === 0) {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: 'Transaksi tidak ditemukan' },
+        404
+      )
+    }
+
+    if (String(rows[0]!.type) === 'debt_payment') {
+      return c.json<ApiResponse<never>>(
+        { success: false, error: 'Transaksi pembayaran hutang tidak bisa dihapus' },
+        403
+      )
+    }
+
+    await queryDB(db,
+      `UPDATE transactions SET is_deleted = 1 WHERE id = ?`,
+      [txId]
+    )
+
+    return c.json<ApiResponse<unknown>>({
+      success: true,
+      data: { id: txId, deleted: true },
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
