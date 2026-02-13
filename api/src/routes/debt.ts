@@ -139,9 +139,9 @@ route.post('/:id/pay', async (c) => {
     const body = await c.req.json<{
       schedule_id: string
       amount: number
-      is_full_payment: boolean
+      is_full_payment?: boolean
     }>()
-    const { schedule_id, amount, is_full_payment } = body
+    const { schedule_id, amount } = body
 
     if (!schedule_id || !amount || amount <= 0) {
       return c.json<ApiResponse<never>>(
