@@ -1,17 +1,17 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-13 19:48 WIB
+> Last Updated: 2026-02-13 19:56 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-13
-- **Fase:** Fase 1, 2, 3 — PRD + Constitution + AI-Context
+- **Fase:** Fase 4 — Feature Specs
 - **Status:** ✅ DONE
 - **Branch:** `main`
-- **Catatan:** Complete rewrite semua docs setelah requirement correction
+- **Catatan:** 8 MUST feature specs completed with full detail
 
 ---
 
@@ -23,7 +23,7 @@
 | **Fase 1** | PRD (Product Requirements) | ✅ DONE | 2026-02-13 |
 | **Fase 2** | Constitution (Tech Stack) | ✅ DONE | 2026-02-13 |
 | **Fase 3** | AI-Context (Navigation Map) | ✅ DONE | 2026-02-13 |
-| **Fase 4** | Feature Specs | ⬜ TODO | - |
+| **Fase 4** | Feature Specs | ✅ DONE | 2026-02-13 |
 | **Fase 5** | Setup Space Instruction | ⬜ TODO | - |
 | **Fase 6** | Build Loop | ⬜ TODO | - |
 | **Fase 7** | ADR | ⬜ TODO | - |
@@ -35,19 +35,19 @@
 
 ### MVP (Build 4 Jam)
 
-| ID | Nama | Priority | Status | Branch |
-|----|------|----------|--------|--------|
-| F001 | Quick-Tap Input Transaksi | MUST | ⬜ TODO | - |
-| F002 | Upload Struk OCR | MUST | ⬜ TODO | - |
-| F003 | Pre-loaded Data Hutang | MUST | ⬜ TODO | - |
-| F004 | Home Dashboard | MUST | ⬜ TODO | - |
-| F005 | Status Hutang | MUST | ⬜ TODO | - |
-| F006 | Bayar Hutang (Tandai Lunas) | MUST | ⬜ TODO | - |
-| F007 | Edit/Hapus Transaksi | MUST | ⬜ TODO | - |
-| F008 | Laporan Harian | MUST | ⬜ TODO | - |
-| F009 | Ringkasan Mingguan | SHOULD | ⬜ TODO | - |
-| F010 | Adjust Budget | SHOULD | ⬜ TODO | - |
-| F011 | Help/Onboarding | SHOULD | ⬜ TODO | - |
+| ID | Nama | Priority | Spec | Build | Branch |
+|----|------|----------|------|-------|--------|
+| F001 | Quick-Tap Input Transaksi | MUST | ✅ | ⬜ TODO | - |
+| F002 | Upload Struk OCR | MUST | ✅ | ⬜ TODO | - |
+| F003 | Pre-loaded Data Hutang | MUST | ✅ | ⬜ TODO | - |
+| F004 | Home Dashboard | MUST | ✅ | ⬜ TODO | - |
+| F005 | Status Hutang | MUST | ✅ | ⬜ TODO | - |
+| F006 | Bayar Hutang (Tandai Lunas) | MUST | ✅ | ⬜ TODO | - |
+| F007 | Edit/Hapus Transaksi | MUST | ✅ | ⬜ TODO | - |
+| F008 | Laporan Harian | MUST | ✅ | ⬜ TODO | - |
+| F009 | Ringkasan Mingguan | SHOULD | ⬜ | ⬜ TODO | - |
+| F010 | Adjust Budget | SHOULD | ⬜ | ⬜ TODO | - |
+| F011 | Help/Onboarding | SHOULD | ⬜ | ⬜ TODO | - |
 
 ### Future Features
 
@@ -73,6 +73,7 @@
 - **2026-02-13 19:40** — Platform: Web PWA (bukan Telegram Mini App)
 - **2026-02-13 19:45** — Frontend: React + Vite (bukan Hono JSX) untuk scalability future features
 - **2026-02-13 19:48** — Complete rewrite semua docs (PRD v2, CONSTITUTION v2, AI-CONTEXT v2)
+- **2026-02-13 19:56** — Fase 4 completed: 8 feature specs with UI mockups, API contracts, edge cases, test scenarios
 
 ---
 
@@ -100,20 +101,16 @@
 
 ## Next Steps
 
-### Immediate (Fase 4)
-1. [ ] Buat detailed spec untuk setiap MUST feature di `docs/features/`:
-   - `docs/features/F001-quick-input.md`
-   - `docs/features/F002-ocr-upload.md`
-   - `docs/features/F003-preloaded-debts.md`
-   - `docs/features/F004-home-dashboard.md`
-   - `docs/features/F005-debt-status.md`
-   - `docs/features/F006-pay-debt.md`
-   - `docs/features/F007-edit-delete.md`
-   - `docs/features/F008-daily-report.md`
+### Immediate (Fase 5)
+1. [ ] Setup Custom Space Instruction di Perplexity untuk build loop
+2. [ ] Include context: baca docs/ dulu sebelum coding
 
-### After Fase 4
-1. [ ] **Fase 5:** Setup Custom Space Instruction di Perplexity
-2. [ ] **Fase 6:** Start build loop (setup project → API → frontend → deploy)
+### After Fase 5
+1. [ ] **Fase 6:** Start build loop
+   - Setup Vite React + Hono Workers + DO schema + seed
+   - API endpoints (transaction, debt, report, ocr, settings, dashboard)
+   - Frontend pages (Home, QuickInput, Debts, Report, Settings)
+   - PWA setup + deploy
 
 ---
 
@@ -159,55 +156,71 @@ User memberikan studi kasus lengkap: driver ojol, multi-hutang Rp 8.851.200, tar
 
 **Yang dikerjakan:**
 - ✅ Complete rewrite `docs/PRD.md` v2.0
-  - Studi kasus nyata dengan data keuangan lengkap
-  - 5 hutang detail dengan jadwal cicilan
-  - 11 fitur (8 MUST + 3 SHOULD) + 7 future features
-  - 8 NON-Goals
-  - 6 layar UI dengan user flows
-  - Data model (4 tabel SQL)
-  - Performance targets & constraints
 - ✅ Complete rewrite `docs/CONSTITUTION.md` v2.0
-  - Full tech stack dengan justifikasi
-  - Project structure (frontend/ + api/ monorepo)
-  - API contract (12 endpoints)
-  - Code rules (frontend, backend, DB)
-  - Git workflow & deployment config
 - ✅ Complete rewrite `docs/AI-CONTEXT.md` v2.0
-  - Architecture diagram
-  - Complete file map (frontend + backend)
-  - Key business rules
-  - Naming conventions
-  - External services reference
 - ✅ Update `docs/PROGRESS.md`
-  - Session 3 log
-  - Updated decisions timeline
-  - Updated feature list with priorities
-  - Known issues identified
-
-**Files updated:**
-- `docs/PRD.md` (v1.1 → v2.0, complete rewrite)
-- `docs/CONSTITUTION.md` (template → v2.0, fully populated)
-- `docs/AI-CONTEXT.md` (template → v2.0, fully populated)
-- `docs/PROGRESS.md` (updated with session 3)
-
-**Key decisions:**
-- Platform: Web PWA (not Telegram)
-- Interface: Quick-tap dashboard (not chat)
-- Frontend: React + Vite + Tailwind (not Hono JSX)
-- AI: gpt-oss-20b reserved for future, not used in MVP
-- OCR: ocr.space API (not Workers AI Vision)
 
 **Commits:**
 - `docs: Complete Fase 1 - PRD, CONSTITUTION, AI-CONTEXT, PROGRESS`
 
 **Status:** ✅ Fase 1 + 2 + 3 completed
 
-**Next:** Fase 4 — Detailed feature specs
+---
+
+### Session 4 — 2026-02-13 19:56 WIB
+
+**Fase:** Fase 4 — Feature Specs
+
+**Yang dikerjakan:**
+- ✅ `docs/features/F001-quick-input.md` — Quick-Tap Input (4 tap, 0 ketik)
+  - UI mockup 3 steps, preset nominal per kategori, edge cases, test scenarios
+- ✅ `docs/features/F002-ocr-upload.md` — OCR Upload
+  - Upload flow, processing state, smart parsing rules, keyword mapping
+- ✅ `docs/features/F003-preloaded-debts.md` — Pre-loaded Debts
+  - Complete seed SQL for 5 debts + 28 schedule entries, init logic
+- ✅ `docs/features/F004-home-dashboard.md` — Home Dashboard
+  - Full UI mockup, dashboard API response, urgency levels, budget calc
+- ✅ `docs/features/F005-debt-status.md` — Debt Status
+  - Card list layout, expanded detail, sort order, API response
+- ✅ `docs/features/F006-pay-debt.md` — Pay Debt (Tandai Lunas)
+  - Full + partial payment flows, transaction logic, confirmation dialog
+- ✅ `docs/features/F007-edit-delete.md` — Edit/Delete Transaction
+  - Modal UI, protection rules (debt_payment locked), soft delete
+- ✅ `docs/features/F008-daily-report.md` — Daily Report
+  - Date navigation, category breakdown vs budget, color coding
+
+**Files created:**
+- `docs/features/F001-quick-input.md`
+- `docs/features/F002-ocr-upload.md`
+- `docs/features/F003-preloaded-debts.md`
+- `docs/features/F004-home-dashboard.md`
+- `docs/features/F005-debt-status.md`
+- `docs/features/F006-pay-debt.md`
+- `docs/features/F007-edit-delete.md`
+- `docs/features/F008-daily-report.md`
+
+**Commits:**
+- `docs: Fase 4 - All 8 MUST feature specs`
+- `docs: Update PROGRESS.md - Fase 4 completed`
+
+**Key highlights per spec:**
+- F001: 10 preset nominal per kategori, custom numpad fallback
+- F002: Smart keyword→category mapping (pertalite→BBM, nasi→makan)
+- F003: 28 total schedule entries, SPayLater last payment Rp 9
+- F004: Urgency levels (overdue, critical, warning, normal)
+- F005: Sort by urgency, expandable cards with schedule
+- F006: Full + partial payment, atomic transaction (BEGIN/COMMIT)
+- F007: debt_payment protected from edit/delete
+- F008: Budget vs spent color coding, date navigation
+
+**Status:** ✅ Fase 4 completed
+
+**Next:** Fase 5 — Setup Space Instruction for Build Loop
 
 ---
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-13 19:48 WIB
-- **Total Sessions:** 3
-- **Current Phase:** Ready for Fase 4
+- **Last Updated:** 2026-02-13 19:56 WIB
+- **Total Sessions:** 4
+- **Current Phase:** Ready for Fase 5
