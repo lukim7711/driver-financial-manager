@@ -16,6 +16,16 @@ export function formatDate(isoString: string): string {
   }).format(date)
 }
 
+export function formatDateLong(dateStr: string): string {
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
 export function formatTime(isoString: string): string {
   const date = new Date(isoString)
   return new Intl.DateTimeFormat('id-ID', {

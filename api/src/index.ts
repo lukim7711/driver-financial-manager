@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { transactionRoute } from './routes/transaction'
+import { dashboardRoute } from './routes/dashboard'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -12,7 +13,6 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Logger middleware (only in development)
 app.use('*', async (c, next) => {
   if (c.env.ENVIRONMENT !== 'production') {
     return logger()(c, next)
@@ -20,7 +20,6 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-// CORS middleware
 app.use('*', cors({
   origin: (origin) => {
     if (origin.includes('localhost:3000')) return origin
@@ -32,13 +31,12 @@ app.use('*', cors({
   maxAge: 86400,
 }))
 
-// Health check
 app.get('/', (c) => {
   return c.json({
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '0.1.0',
+      version: '0.2.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -47,32 +45,21 @@ app.get('/', (c) => {
 
 // API routes
 app.route('/api/transactions', transactionRoute)
+app.route('/api/dashboard', dashboardRoute)
 
-// Stub routes (will be implemented in future features)
+// Stub routes
 app.get('/api/debts', async (c) => {
   return c.json({ success: true, data: [] })
-})
-
-app.get('/api/dashboard', async (c) => {
-  return c.json({
-    success: true,
-    data: {
-      today: { income: 0, expense: 0, profit: 0, budget_remaining: 0 },
-      debts: { total_remaining: 0, next_due: null },
-    },
-  })
 })
 
 app.get('/api/settings', async (c) => {
   return c.json({ success: true, data: {} })
 })
 
-// 404 handler
 app.notFound((c) => {
   return c.json({ success: false, error: 'Endpoint not found' }, 404)
 })
 
-// Error handler
 app.onError((err, c) => {
   return c.json({
     success: false,
