@@ -124,14 +124,13 @@ export function Debts() {
   const handleAddSubmit = async (formData: {
     platform: string
     total_original: number
-    monthly_installment: number
-    due_day: number
-    total_installments: number
-    late_fee_type: string
-    late_fee_rate: number
-    debt_type?: string
-    due_date?: string
     note?: string
+    late_fee_rate: number
+    late_fee_type: string
+    schedules: Array<{
+      due_date: string
+      amount: number
+    }>
   }) => {
     setSaving(true)
     const res = await apiClient<{ id: string }>(
@@ -155,6 +154,7 @@ export function Debts() {
     due_day?: number
     late_fee_type?: string
     late_fee_rate?: number
+    note?: string
   }) => {
     if (!editTarget) return
     setSaving(true)
@@ -221,7 +221,7 @@ export function Debts() {
       {/* Header */}
       <div className="bg-blue-600 px-4 pt-6 pb-4 text-white">
         <h1 className="text-lg font-bold">
-          💳 Status Hutang
+          \ud83d\udcb3 Status Hutang
         </h1>
         <p className="mt-2 text-2xl font-bold">
           {formatRupiah(summary.total_remaining)}
@@ -238,7 +238,7 @@ export function Debts() {
           />
         </div>
         <p className="mt-1 text-xs text-blue-200">
-          {summary.progress_percentage}% lunas •{' '}
+          {summary.progress_percentage}% lunas \u2022{' '}
           {formatRupiah(summary.total_paid)} terbayar
         </p>
       </div>
@@ -246,7 +246,7 @@ export function Debts() {
       <div className="space-y-3 p-4">
         {allPaid && (
           <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-6 text-center">
-            <p className="text-3xl">🎉</p>
+            <p className="text-3xl">\ud83c\udf89</p>
             <p className="mt-2 text-lg font-bold text-emerald-700">
               Semua Hutang LUNAS!
             </p>
@@ -268,9 +268,10 @@ export function Debts() {
 
         {debts.length === 0 && !allPaid && (
           <div className="rounded-2xl bg-gray-100 p-6 text-center">
-            <p className="text-3xl">💭</p>
+            <p className="text-3xl">\ud83d\udcad</p>
             <p className="mt-2 text-sm text-gray-500">
-              Belum ada hutang. Tap + untuk menambah.
+              Belum ada hutang. Tap + untuk
+              menambah.
             </p>
           </div>
         )}

@@ -1,70 +1,50 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { formatRupiah } from '../lib/format'
 
-type DebtType = 'installment' | 'simple'
+interface ScheduleRow {
+  key: number
+  due_date: string
+  amount: string
+}
 
 interface AddDebtFormProps {
   onSubmit: (data: {
     platform: string
     total_original: number
-    monthly_installment: number
-    due_day: number
-    total_installments: number
-    late_fee_type: string
-    late_fee_rate: number
-    debt_type: DebtType
-    due_date?: string
     note?: string
+    late_fee_rate: number
+    late_fee_type: string
+    schedules: Array<{
+      due_date: string
+      amount: number
+    }>
   }) => Promise<void>
   onCancel: () => void
   loading: boolean
 }
 
-interface PreviewItem {
-  label: string
-  amount: number
-  isLast: boolean
+function nextMonth(offset: number): string {
+  const now = new Date()
+  const wib = new Date(
+    now.getTime() + 7 * 60 * 60 * 1000
+  )
+  let y = wib.getFullYear()
+  let m = wib.getMonth() + offset
+  while (m > 11) {
+    m -= 12
+    y++
+  }
+  while (m < 0) {
+    m += 12
+    y--
+  }
+  const mm = String(m + 1).padStart(2, '0')
+  return `${y}-${mm}-15`
 }
 
-function buildPreview(
-  total: number,
-  monthly: number,
-  count: number,
-  dueDay: number
-): PreviewItem[] {
-  if (total <= 0 || monthly <= 0 || count <= 0) return []
-  const items: PreviewItem[] = []
-  const now = new Date()
-  const offset = 7 * 60
-  const local = new Date(now.getTime() + offset * 60000)
-  let year = local.getFullYear()
-  let month = local.getMonth()
-  let remaining = total
-
-  for (let i = 0; i < count; i++) {
-    const day = Math.min(
-      dueDay,
-      new Date(year, month + 1, 0).getDate()
-    )
-    const dt = new Date(year, month, day)
-    const label = dt.toLocaleDateString('id-ID', {
-      month: 'short',
-      year: 'numeric',
-    })
-    const isLast = i === count - 1
-    const amt = isLast
-      ? remaining
-      : Math.min(monthly, remaining)
-    remaining -= amt
-
-    items.push({ label, amount: amt, isLast })
-    month++
-    if (month > 11) {
-      month = 0
-      year++
-    }
-  }
-  return items
+let keyCounter = 0
+function nextKey(): number {
+  return ++keyCounter
 }
 
 export function AddDebtForm({
@@ -72,34 +52,124 @@ export function AddDebtForm({
   onCancel,
   loading,
 }: AddDebtFormProps) {
-  const [mode, setMode] = useState<DebtType>(
-    'installment'
-  )
   const [platform, setPlatform] = useState('')
-  const [totalOriginal, setTotalOriginal] = useState('')
-  const [installment, setInstallment] = useState('')
-  const [dueDay, setDueDay] = useState('15')
-  const [totalInst, setTotalInst] = useState('6')
-  const [feeType, setFeeType] = useState('pct_monthly')
-  const [feeRate, setFeeRate] = useState('0')
-  const [dueDate, setDueDate] = useState('')
+  const [totalStr, setTotalStr] = useState('')
   const [note, setNote] = useState('')
+  const [feeRate, setFeeRate] = useState('0')
   const [error, setError] = useState('')
 
-  const preview = useMemo(() => {
-    if (mode !== 'installment') return []
-    return buildPreview(
-      parseInt(totalOriginal, 10) || 0,
-      parseInt(installment, 10) || 0,
-      parseInt(totalInst, 10) || 0,
-      parseInt(dueDay, 10) || 15
-    )
-  }, [mode, totalOriginal, installment, totalInst, dueDay])
+  // Shortcut fields
+  const [scMonthly, setScMonthly] = useState('')
+  const [scDay, setScDay] = useState('1')
+  const [scCount, setScCount] = useState('5')
 
-  const previewSum = preview.reduce(
-    (s, p) => s + p.amount,
+  // Schedule rows
+  const [rows, setRows] = useState<ScheduleRow[]>(
+    []
+  )
+
+  const total = parseInt(totalStr, 10) || 0
+  const schedSum = rows.reduce(
+    (s, r) => s + (parseInt(r.amount, 10) || 0),
     0
   )
+  const isMatch = schedSum === total && total > 0
+
+  const handleAutoFill = () => {
+    const monthly = parseInt(scMonthly, 10) || 0
+    const day = parseInt(scDay, 10) || 1
+    const count = parseInt(scCount, 10) || 1
+    if (monthly <= 0 || total <= 0 || count <= 0)
+      return
+
+    const now = new Date()
+    const wib = new Date(
+      now.getTime() + 7 * 60 * 60 * 1000
+    )
+    let year = wib.getFullYear()
+    let month = wib.getMonth()
+    let remaining = total
+    const newRows: ScheduleRow[] = []
+
+    for (let i = 0; i < count; i++) {
+      const maxDay = new Date(
+        year,
+        month + 1,
+        0
+      ).getDate()
+      const d = Math.min(day, maxDay)
+      const dd = String(d).padStart(2, '0')
+      const mm = String(month + 1).padStart(
+        2,
+        '0'
+      )
+      const dueDate = `${year}-${mm}-${dd}`
+
+      const isLast = i === count - 1
+      const amt = isLast
+        ? remaining
+        : Math.min(monthly, remaining)
+      remaining -= amt
+
+      newRows.push({
+        key: nextKey(),
+        due_date: dueDate,
+        amount: String(amt),
+      })
+
+      month++
+      if (month > 11) {
+        month = 0
+        year++
+      }
+    }
+    setRows(newRows)
+  }
+
+  const handleAddRow = () => {
+    const lastDate =
+      rows.length > 0
+        ? rows[rows.length - 1]!.due_date
+        : nextMonth(1)
+    // Next month from last row
+    const d = new Date(lastDate)
+    d.setMonth(d.getMonth() + 1)
+    const y = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(
+      2,
+      '0'
+    )
+    const dd = lastDate.slice(8, 10)
+    const newDate = `${y}-${mm}-${dd}`
+
+    const remainAmt = Math.max(total - schedSum, 0)
+    setRows([
+      ...rows,
+      {
+        key: nextKey(),
+        due_date: newDate,
+        amount: String(remainAmt),
+      },
+    ])
+  }
+
+  const handleDeleteRow = (key: number) => {
+    setRows(rows.filter((r) => r.key !== key))
+  }
+
+  const handleRowChange = (
+    key: number,
+    field: 'due_date' | 'amount',
+    value: string
+  ) => {
+    setRows(
+      rows.map((r) =>
+        r.key === key
+          ? { ...r, [field]: value }
+          : r
+      )
+    )
+  }
 
   const handleSubmit = async () => {
     setError('')
@@ -107,105 +177,59 @@ export function AddDebtForm({
       setError('Nama wajib diisi')
       return
     }
-    const total = parseInt(totalOriginal, 10)
-    if (!total || total <= 0) {
+    if (total <= 0) {
       setError('Total hutang harus > 0')
       return
     }
-
-    if (mode === 'simple') {
-      if (!dueDate) {
-        setError('Tanggal bayar wajib diisi')
-        return
-      }
-      await onSubmit({
-        platform: platform.trim(),
-        total_original: total,
-        monthly_installment: total,
-        due_day: parseInt(dueDate.slice(8, 10), 10) || 1,
-        total_installments: 1,
-        late_fee_type: 'pct_monthly',
-        late_fee_rate: 0,
-        debt_type: 'simple',
-        due_date: dueDate,
-        note: note.trim(),
-      })
+    if (rows.length === 0) {
+      setError(
+        'Tambahkan minimal 1 jadwal cicilan'
+      )
+      return
+    }
+    if (!isMatch) {
+      setError(
+        `Total jadwal (${formatRupiah(schedSum)}) \u2260 total hutang (${formatRupiah(total)})`
+      )
       return
     }
 
-    const inst = parseInt(installment, 10)
-    if (!inst || inst <= 0) {
-      setError('Cicilan bulanan harus > 0')
-      return
-    }
-    const day = parseInt(dueDay, 10)
-    if (!day || day < 1 || day > 31) {
-      setError('Tanggal jatuh tempo 1-31')
-      return
-    }
-    const numInst = parseInt(totalInst, 10)
-    if (!numInst || numInst < 1) {
-      setError('Jumlah cicilan minimal 1')
-      return
-    }
+    const schedules = rows.map((r) => ({
+      due_date: r.due_date,
+      amount: parseInt(r.amount, 10) || 0,
+    }))
+
     const rate = parseFloat(feeRate) || 0
 
     await onSubmit({
       platform: platform.trim(),
       total_original: total,
-      monthly_installment: inst,
-      due_day: day,
-      total_installments: numInst,
-      late_fee_type: feeType,
+      note: note.trim() || undefined,
       late_fee_rate: rate / 100,
-      debt_type: 'installment',
-      note: note.trim(),
+      late_fee_type: 'pct_monthly',
+      schedules,
     })
   }
 
   const inputCls =
-    'mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-blue-400 focus:outline-none'
-  const labelCls = 'text-xs font-medium text-gray-500'
+    'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-blue-400 focus:outline-none'
+  const labelCls =
+    'text-xs font-medium text-gray-500'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-5 space-y-4 animate-slide-up max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-t-2xl bg-white p-5 space-y-4 animate-slide-up max-h-[92vh] overflow-y-auto">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">
-            ➕ Tambah Hutang Baru
+            \u2795 Tambah Hutang Baru
           </h2>
           <button
             type="button"
             onClick={onCancel}
             className="text-gray-400 text-xl"
           >
-            ✕
-          </button>
-        </div>
-
-        {/* Mode Toggle */}
-        <div className="flex rounded-xl bg-gray-100 p-1">
-          <button
-            type="button"
-            onClick={() => setMode('installment')}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
-              mode === 'installment'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-500'
-            }`}
-          >
-            🏦 Cicilan
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('simple')}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
-              mode === 'simple'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-500'
-            }`}
-          >
-            🤝 Pinjaman
+            \u2715
           </button>
         </div>
 
@@ -215,209 +239,260 @@ export function AddDebtForm({
           </p>
         )}
 
+        {/* Name + Total */}
         <div className="space-y-3">
           <div>
             <label className={labelCls}>
-              {mode === 'simple'
-                ? 'Pinjam ke Siapa'
-                : 'Platform / Nama'}
+              Nama / Platform
             </label>
             <input
               type="text"
               value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              placeholder={
-                mode === 'simple'
-                  ? 'cth: Andri, Budi'
-                  : 'cth: Akulaku, Kredivo'
+              onChange={(e) =>
+                setPlatform(e.target.value)
               }
-              className={inputCls}
+              placeholder="cth: SPayLater, Andri"
+              className={`mt-1 ${inputCls}`}
               maxLength={50}
             />
           </div>
-
           <div>
             <label className={labelCls}>
-              {mode === 'simple'
-                ? 'Jumlah Pinjaman (Rp)'
-                : 'Total Hutang (Rp)'}
+              Total Hutang (Rp)
             </label>
             <input
               type="number"
               inputMode="numeric"
-              value={totalOriginal}
+              value={totalStr}
               onChange={(e) =>
-                setTotalOriginal(e.target.value)
+                setTotalStr(e.target.value)
               }
-              placeholder="500000"
-              className={inputCls}
+              placeholder="672000"
+              className={`mt-1 ${inputCls}`}
             />
           </div>
-
-          {mode === 'simple' ? (
-            <>
-              <div>
-                <label className={labelCls}>
-                  Tanggal Bayar
-                </label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) =>
-                    setDueDate(e.target.value)
-                  }
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>
-                  Catatan (opsional)
-                </label>
-                <input
-                  type="text"
-                  value={note}
-                  onChange={(e) =>
-                    setNote(e.target.value)
-                  }
-                  placeholder="cth: Pinjam buat beli ban"
-                  className={inputCls}
-                  maxLength={100}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <label className={labelCls}>
-                  Cicilan/Bulan (Rp)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={installment}
-                  onChange={(e) =>
-                    setInstallment(e.target.value)
-                  }
-                  placeholder="162845"
-                  className={inputCls}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>
-                    Tgl Jatuh Tempo
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={dueDay}
-                    onChange={(e) =>
-                      setDueDay(e.target.value)
-                    }
-                    min={1}
-                    max={31}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>
-                    Jumlah Cicilan
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={totalInst}
-                    onChange={(e) =>
-                      setTotalInst(e.target.value)
-                    }
-                    min={1}
-                    max={120}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>
-                    Tipe Denda
-                  </label>
-                  <select
-                    value={feeType}
-                    onChange={(e) =>
-                      setFeeType(e.target.value)
-                    }
-                    className={`${inputCls} bg-white`}
-                  >
-                    <option value="pct_monthly">
-                      % / Bulan
-                    </option>
-                    <option value="pct_daily">
-                      % / Hari
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>
-                    Denda (%)
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={feeRate}
-                    onChange={(e) =>
-                      setFeeRate(e.target.value)
-                    }
-                    placeholder="5"
-                    step="0.01"
-                    min={0}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
-        {/* Preview Jadwal */}
-        {mode === 'installment' && preview.length > 0 && (
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs font-semibold text-gray-500 mb-2">
-              📋 Preview Jadwal
-            </p>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {preview.map((p, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span className="text-gray-600">
-                    {p.label}
-                  </span>
-                  <span
-                    className={`font-medium ${
-                      p.isLast
-                        ? 'text-amber-600'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {formatRupiah(p.amount)}
-                    {p.isLast && ' ⚡'}
-                  </span>
-                </div>
-              ))}
+        {/* Shortcut */}
+        <div className="rounded-xl bg-gray-50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-500">
+            \u26a1 Shortcut Isi Cepat
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-400">
+                Cicilan/Bln
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={scMonthly}
+                onChange={(e) =>
+                  setScMonthly(e.target.value)
+                }
+                placeholder="162845"
+                className={`mt-0.5 ${inputCls} text-xs py-2`}
+              />
             </div>
-            <p className="mt-2 text-xs text-gray-400">
-              Total: {formatRupiah(previewSum)}
-              {previewSum ===
-              (parseInt(totalOriginal, 10) || 0)
-                ? ' ✅ Cocok'
-                : ' ⚠️ Tidak cocok'}
-            </p>
+            <div>
+              <label className="text-[10px] text-gray-400">
+                Tgl
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={scDay}
+                onChange={(e) =>
+                  setScDay(e.target.value)
+                }
+                min={1}
+                max={31}
+                className={`mt-0.5 ${inputCls} text-xs py-2`}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400">
+                Brp Kali
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={scCount}
+                onChange={(e) =>
+                  setScCount(e.target.value)
+                }
+                min={1}
+                max={120}
+                className={`mt-0.5 ${inputCls} text-xs py-2`}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleAutoFill}
+            className="w-full rounded-lg bg-amber-100 py-2 text-xs font-bold text-amber-700 transition-all active:scale-95"
+          >
+            \u26a1 Isi Rata (auto-fill)
+          </button>
+        </div>
+
+        {/* Schedule Rows */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 mb-2">
+            \ud83d\udcc5 Jadwal Cicilan
+            {rows.length > 0 && (
+              <span className="ml-1 font-normal text-gray-400">
+                ({rows.length} jadwal)
+              </span>
+            )}
+          </p>
+
+          {rows.length === 0 ? (
+            <div className="rounded-xl bg-gray-50 p-4 text-center">
+              <p className="text-xs text-gray-400">
+                Belum ada jadwal.
+              </p>
+              <p className="text-xs text-gray-400">
+                Gunakan \u26a1 Isi Rata atau \u2795
+                Tambah manual.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {rows.map((r, idx) => {
+                const amt =
+                  parseInt(r.amount, 10) || 0
+                const isLast =
+                  idx === rows.length - 1 &&
+                  rows.length > 1 &&
+                  amt !==
+                    (parseInt(
+                      rows[0]!.amount,
+                      10
+                    ) || 0)
+
+                return (
+                  <div
+                    key={r.key}
+                    className="flex items-center gap-2 rounded-xl bg-gray-50 p-2"
+                  >
+                    <span className="text-xs font-bold text-gray-400 w-5">
+                      {idx + 1}
+                    </span>
+                    <input
+                      type="date"
+                      value={r.due_date}
+                      onChange={(e) =>
+                        handleRowChange(
+                          r.key,
+                          'due_date',
+                          e.target.value
+                        )
+                      }
+                      className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:border-blue-400 focus:outline-none"
+                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={r.amount}
+                        onChange={(e) =>
+                          handleRowChange(
+                            r.key,
+                            'amount',
+                            e.target.value
+                          )
+                        }
+                        className={`w-24 rounded-lg border px-2 py-1.5 text-xs text-right focus:outline-none ${
+                          isLast
+                            ? 'border-amber-300 bg-amber-50'
+                            : 'border-gray-200'
+                        }`}
+                      />
+                      {isLast && (
+                        <span className="absolute -top-1.5 -right-1 text-[10px]">
+                          \u26a1
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDeleteRow(r.key)
+                      }
+                      className="text-red-400 text-sm active:scale-90"
+                    >
+                      \ud83d\uddd1\ufe0f
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Add row */}
+          <button
+            type="button"
+            onClick={handleAddRow}
+            className="mt-2 w-full rounded-xl border-2 border-dashed border-gray-200 py-2.5 text-xs font-semibold text-gray-400 transition-all active:scale-95"
+          >
+            \u2795 Tambah Jadwal
+          </button>
+        </div>
+
+        {/* Total checker */}
+        {rows.length > 0 && (
+          <div
+            className={`rounded-xl px-3 py-2 text-xs font-medium ${
+              isMatch
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-red-50 text-red-600'
+            }`}
+          >
+            Total jadwal:{' '}
+            {formatRupiah(schedSum)} /{' '}
+            {formatRupiah(total)}{' '}
+            {isMatch ? '\u2705 Cocok' : '\u26a0\ufe0f Belum cocok'}
           </div>
         )}
 
+        {/* Extra fields */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>
+              Denda (%)
+            </label>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={feeRate}
+              onChange={(e) =>
+                setFeeRate(e.target.value)
+              }
+              placeholder="0"
+              step="0.01"
+              min={0}
+              className={`mt-1 ${inputCls}`}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>
+              Catatan
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) =>
+                setNote(e.target.value)
+              }
+              placeholder="opsional"
+              className={`mt-1 ${inputCls}`}
+              maxLength={100}
+            />
+          </div>
+        </div>
+
+        {/* Submit */}
         <button
           type="button"
           onClick={() => void handleSubmit()}
@@ -426,9 +501,7 @@ export function AddDebtForm({
         >
           {loading
             ? 'Menyimpan...'
-            : mode === 'simple'
-              ? '💾 Simpan Pinjaman'
-              : '💾 Simpan Hutang'}
+            : '\ud83d\udcbe Simpan Hutang'}
         </button>
       </div>
     </div>
