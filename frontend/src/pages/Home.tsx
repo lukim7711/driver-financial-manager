@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
-import { apiClient } from '../lib/api'
-import { todayISO, formatDateLong } from '../lib/format'
-import { useToast } from '../components/Toast'
+import { useState, useEffect } from 'react'
+import { BottomNav } from '../components/BottomNav'
 import { SummaryCard } from '../components/SummaryCard'
-import { DailyTarget } from '../components/DailyTarget'
 import { BudgetBar } from '../components/BudgetBar'
+import { DailyTarget } from '../components/DailyTarget'
 import { DueAlert } from '../components/DueAlert'
 import { DebtProgress } from '../components/DebtProgress'
-import { BottomNav } from '../components/BottomNav'
+import { TransactionItem } from '../components/TransactionItem'
+import { OnboardingOverlay } from '../components/OnboardingOverlay'
+import { useOnboarding } from '../hooks/use-onboarding'
+import { formatRupiah, todayISO } from '../lib/format'
+import { api } from '../lib/api'
 
 interface DashboardData {
   date: string
@@ -20,7 +22,6 @@ interface DashboardData {
   }
   budget: {
     daily_total: number
-    total_monthly: number
     spent_today: number
     remaining: number
     percentage_used: number
@@ -57,178 +58,140 @@ interface DashboardData {
   }
 }
 
-export function Home() {
-  const toast = useToast()
-  const [data, setData] = useState<DashboardData | null>(
-    null
-  )
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+interface RecentTx {
+  id: string
+  created_at: string
+  type: string
+  amount: number
+  category: string
+  note: string
+}
 
-  const fetchDashboard = useCallback(async () => {
-    const date = todayISO()
-    const res = await apiClient<DashboardData>(
-      `/api/dashboard?date=${date}`
-    )
-    if (res.success && res.data) {
-      setData(res.data)
-    } else if (!res.success) {
-      toast.error(res.error)
-    }
-    setLoading(false)
-    setRefreshing(false)
-  }, [toast])
+export function Home() {
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [recentTx, setRecentTx] = useState<RecentTx[]>([])
+  const [loading, setLoading] = useState(true)
+  const onboarding = useOnboarding()
 
   useEffect(() => {
-    void fetchDashboard()
-  }, [fetchDashboard])
-
-  const handleRefresh = () => {
-    setRefreshing(true)
-    void fetchDashboard()
-  }
+    const date = todayISO()
+    Promise.all([
+      api<DashboardData>(`/api/dashboard?date=${date}`),
+      api<RecentTx[]>('/api/transactions?limit=5'),
+    ]).then(([dash, txs]) => {
+      setData(dash)
+      setRecentTx(txs || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-400">Memuat dashboard...</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-400">Memuat...</p>
       </div>
     )
   }
 
-  const today = data?.today ?? {
-    income: 0,
-    expense: 0,
-    debt_payment: 0,
-    profit: 0,
-    transaction_count: 0,
-  }
-  const budget = data?.budget ?? {
-    daily_total: 0,
-    total_monthly: 0,
-    spent_today: 0,
-    remaining: 0,
-    percentage_used: 0,
-  }
-  const target = data?.daily_target ?? {
-    target_amount: 0,
-    earned_today: 0,
-    gap: 0,
-    is_on_track: false,
-    breakdown: {
-      daily_expense: 0,
-      prorated_monthly: 0,
-      total_monthly: 0,
-      daily_debt: 0,
-      days_in_month: 30,
-    },
-    days_remaining: 0,
-    target_date: '',
-  }
-  const dues = data?.upcoming_dues ?? []
-  const debt = data?.debt_summary ?? {
-    total_original: 0,
-    total_remaining: 0,
-    total_paid: 0,
-    progress_percentage: 0,
-    target_date: '',
+  if (!data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-red-400">Gagal memuat data</p>
+      </div>
+    )
   }
 
+  const { today, budget, daily_target, upcoming_dues, debt_summary } = data
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="mx-auto max-w-md pb-20">
       {/* Header */}
-      <div className="bg-emerald-600 px-4 pt-6 pb-4 text-white">
+      <div className="bg-emerald-500 px-4 pb-6 pt-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">
-              {'\ud83d\udcb0'} Money Manager
-            </h1>
-            <p className="text-sm text-emerald-100">
-              {'\ud83d\udcc5'} {formatDateLong(todayISO())}
-            </p>
+            <p className="text-sm opacity-80">Pendapatan Hari Ini</p>
+            <p className="text-2xl font-bold">{formatRupiah(today.income)}</p>
           </div>
           <button
             type="button"
-            onClick={handleRefresh}
-            className={`tap-highlight-none rounded-full p-2 transition-all ${
-              refreshing ? 'animate-spin' : ''
-            }`}
+            onClick={onboarding.reopen}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white transition-all active:scale-90"
+            title="Bantuan"
           >
-            {'\ud83d\udd04'}
+            ?
           </button>
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
-        {/* Today summary */}
+      {/* Summary Cards */}
+      <div className="-mt-3 grid grid-cols-3 gap-2 px-4">
         <SummaryCard
-          income={today.income}
-          expense={today.expense}
-          debtPayment={today.debt_payment}
-          profit={today.profit}
-          transactionCount={today.transaction_count}
+          label="Pengeluaran"
+          amount={today.expense}
+          color="red"
         />
-
-        {/* Daily target */}
-        <DailyTarget
-          targetAmount={target.target_amount}
-          earnedToday={target.earned_today}
-          gap={target.gap}
-          isOnTrack={target.is_on_track}
-          breakdown={{
-            dailyExpense: target.breakdown.daily_expense,
-            proratedMonthly:
-              target.breakdown.prorated_monthly,
-            dailyDebt: target.breakdown.daily_debt,
-            daysInMonth: target.breakdown.days_in_month,
-          }}
-          daysRemaining={target.days_remaining}
+        <SummaryCard
+          label="Hutang"
+          amount={today.debt_payment}
+          color="orange"
         />
-
-        {/* Budget bar */}
-        <BudgetBar
-          totalDaily={budget.daily_total}
-          spentToday={budget.spent_today}
-          remaining={budget.remaining}
-          percentageUsed={budget.percentage_used}
+        <SummaryCard
+          label="Profit"
+          amount={today.profit}
+          color={today.profit >= 0 ? 'green' : 'red'}
         />
+      </div>
 
-        {/* Due alerts */}
-        {dues.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-500">
-              {'\u26a0\ufe0f'} JATUH TEMPO
-            </h2>
-            {dues.map((due) => (
-              <DueAlert
-                key={`${due.debt_id}-${due.due_date}`}
-                due={due}
-              />
-            ))}
-          </div>
-        )}
+      {/* Daily Target */}
+      <div className="mt-4 px-4">
+        <DailyTarget target={daily_target} />
+      </div>
 
-        {/* Debt progress */}
-        <DebtProgress
-          totalOriginal={debt.total_original}
-          totalRemaining={debt.total_remaining}
-          totalPaid={debt.total_paid}
-          progressPercentage={debt.progress_percentage}
-          targetDate={debt.target_date}
-        />
+      {/* Budget Bar */}
+      <div className="mt-4 px-4">
+        <BudgetBar budget={budget} />
+      </div>
 
-        {/* Transaction count */}
-        {today.transaction_count > 0 && (
-          <p className="text-center text-xs text-gray-400">
-            {today.transaction_count} transaksi hari ini
-          </p>
-        )}
-        {today.transaction_count === 0 && (
+      {/* Due Alerts */}
+      {upcoming_dues.length > 0 && (
+        <div className="mt-4 px-4">
+          <DueAlert dues={upcoming_dues} />
+        </div>
+      )}
+
+      {/* Debt Progress */}
+      {debt_summary.total_original > 0 && (
+        <div className="mt-4 px-4">
+          <DebtProgress summary={debt_summary} />
+        </div>
+      )}
+
+      {/* Recent Transactions */}
+      <div className="mt-4 px-4">
+        <h2 className="mb-2 text-sm font-semibold text-gray-500">
+          Transaksi Terakhir
+        </h2>
+        {recentTx.length === 0 ? (
           <p className="text-center text-xs text-gray-400">
             Belum ada transaksi hari ini
           </p>
+        ) : (
+          <div className="space-y-1">
+            {recentTx.map((tx) => (
+              <TransactionItem key={tx.id} tx={tx} />
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Onboarding Overlay */}
+      <OnboardingOverlay
+        isOpen={onboarding.isOpen}
+        step={onboarding.step}
+        onNext={onboarding.next}
+        onPrev={onboarding.prev}
+        onClose={onboarding.close}
+      />
 
       <BottomNav active="home" />
     </div>
