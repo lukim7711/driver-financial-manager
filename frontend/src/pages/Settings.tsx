@@ -3,7 +3,7 @@ import { apiClient } from '../lib/api'
 import { formatRupiah } from '../lib/format'
 import { BottomNav } from '../components/BottomNav'
 
-interface BudgetData {
+interface SettingsData {
   budget_bbm: number
   budget_makan: number
   budget_rokok: number
@@ -11,10 +11,11 @@ interface BudgetData {
   budget_rt: number
   daily_total: number
   monthly_rt: number
+  debt_target_date: string
 }
 
 interface BudgetField {
-  key: keyof BudgetData
+  key: string
   emoji: string
   label: string
   hint: string
@@ -31,8 +32,31 @@ const MONTHLY_FIELDS: BudgetField[] = [
   { key: 'budget_rt', emoji: '🏠', label: 'RT/Rumah Tangga', hint: 'Per bulan' },
 ]
 
+function formatDateDisplay(dateStr: string): string {
+  try {
+    const d = new Date(dateStr + 'T00:00:00+07:00')
+    return d.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function getDaysFromNow(dateStr: string): number {
+  const now = new Date()
+  const offset = 7 * 60
+  const local = new Date(now.getTime() + offset * 60 * 1000)
+  const today = local.toISOString().slice(0, 10)
+  const diffMs = new Date(dateStr).getTime() - new Date(today).getTime()
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
 export function Settings() {
-  const [data, setData] = useState<BudgetData | null>(null)
+  const [data, setData] = useState<SettingsData | null>(null)
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -41,8 +65,8 @@ export function Settings() {
 
   const fetchSettings = useCallback(async () => {
     setLoading(true)
-    const res = await apiClient<BudgetData>('/api/settings')
-    if (res.success) {
+    const res = await apiClient<SettingsData>('/api/settings')
+    if (res.success && res.data) {
       setData(res.data)
       setEdits({})
     }
@@ -56,13 +80,19 @@ export function Settings() {
     setSaved(false)
   }
 
-  const getValue = (key: keyof BudgetData): string => {
+  const getBudgetValue = (key: string): string => {
     if (key in edits) return edits[key]!
-    return String(data?.[key] ?? 0)
+    const val = data?.[key as keyof SettingsData]
+    return String(val ?? 0)
+  }
+
+  const getTargetDate = (): string => {
+    if ('debt_target_date' in edits) return edits['debt_target_date']!
+    return data?.debt_target_date ?? '2026-04-13'
   }
 
   const dailyTotal = DAILY_FIELDS.reduce((sum, f) => {
-    return sum + (parseInt(getValue(f.key), 10) || 0)
+    return sum + (parseInt(getBudgetValue(f.key), 10) || 0)
   }, 0)
 
   const hasChanges = Object.keys(edits).length > 0
@@ -72,23 +102,32 @@ export function Settings() {
     setSaving(true)
     setError(null)
 
-    const payload: Record<string, number> = {}
+    const payload: Record<string, number | string> = {}
     for (const [key, val] of Object.entries(edits)) {
-      const num = parseInt(val, 10)
-      if (isNaN(num) || num < 0) {
-        setError(`${key}: harus angka >= 0`)
-        setSaving(false)
-        return
+      if (key === 'debt_target_date') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+          setError('Format tanggal tidak valid')
+          setSaving(false)
+          return
+        }
+        payload[key] = val
+      } else {
+        const num = parseInt(val, 10)
+        if (isNaN(num) || num < 0) {
+          setError(`${key}: harus angka >= 0`)
+          setSaving(false)
+          return
+        }
+        payload[key] = num
       }
-      payload[key] = num
     }
 
-    const res = await apiClient<BudgetData>('/api/settings', {
+    const res = await apiClient<SettingsData>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(payload),
     })
 
-    if (res.success) {
+    if (res.success && res.data) {
       setData(res.data)
       setEdits({})
       setSaved(true)
@@ -99,7 +138,7 @@ export function Settings() {
     setSaving(false)
   }
 
-  const renderField = (field: BudgetField) => (
+  const renderBudgetField = (field: BudgetField) => (
     <div key={field.key} className="flex items-center justify-between rounded-xl bg-white border border-gray-200 px-4 py-3">
       <div className="flex items-center gap-2">
         <span className="text-lg">{field.emoji}</span>
@@ -113,7 +152,7 @@ export function Settings() {
         <input
           type="number"
           inputMode="numeric"
-          value={getValue(field.key)}
+          value={getBudgetValue(field.key)}
           onChange={(e) => handleChange(field.key, e.target.value)}
           className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 text-right text-sm font-bold text-gray-700 outline-none focus:border-emerald-300"
         />
@@ -121,11 +160,14 @@ export function Settings() {
     </div>
   )
 
+  const targetDate = getTargetDate()
+  const daysLeft = getDaysFromNow(targetDate)
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-gray-800 px-4 pt-6 pb-4 text-white">
         <h1 className="text-lg font-bold">⚙️ Pengaturan</h1>
-        <p className="text-sm text-gray-400">Atur budget harian & bulanan</p>
+        <p className="text-sm text-gray-400">Atur budget, target & preferensi</p>
       </div>
 
       {loading ? (
@@ -134,10 +176,37 @@ export function Settings() {
         </div>
       ) : (
         <div className="space-y-4 p-4">
+          {/* Target Lunas */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-500">🎯 Target Lunas Hutang</h2>
+            <div className="rounded-xl bg-white border border-gray-200 px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📅</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Tanggal Target</p>
+                    <p className="text-xs text-gray-400">
+                      {daysLeft > 0 ? `${daysLeft} hari lagi` : daysLeft === 0 ? 'Hari ini!' : `${Math.abs(daysLeft)} hari lewat`}
+                    </p>
+                  </div>
+                </div>
+                <input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => handleChange('debt_target_date', e.target.value)}
+                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-bold text-gray-700 outline-none focus:border-emerald-300"
+                />
+              </div>
+              <p className="text-xs text-center text-gray-400">
+                {formatDateDisplay(targetDate)}
+              </p>
+            </div>
+          </div>
+
           {/* Daily budgets */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">Budget Harian</h2>
-            {DAILY_FIELDS.map(renderField)}
+            {DAILY_FIELDS.map(renderBudgetField)}
             <div className="flex justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
               <span className="text-sm font-medium text-emerald-700">Total Harian</span>
               <span className="text-sm font-bold text-emerald-700">{formatRupiah(dailyTotal)}</span>
@@ -147,7 +216,7 @@ export function Settings() {
           {/* Monthly budgets */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">Budget Bulanan</h2>
-            {MONTHLY_FIELDS.map(renderField)}
+            {MONTHLY_FIELDS.map(renderBudgetField)}
           </div>
 
           {/* Error */}
@@ -175,7 +244,7 @@ export function Settings() {
 
           {/* App info */}
           <div className="text-center space-y-1 pt-4">
-            <p className="text-xs text-gray-400">Money Manager v1.0.0</p>
+            <p className="text-xs text-gray-400">Money Manager v1.1.0</p>
             <p className="text-xs text-gray-300">Driver Ojol Financial Dashboard</p>
           </div>
         </div>
