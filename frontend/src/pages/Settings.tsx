@@ -21,14 +21,14 @@ interface BudgetField {
 }
 
 const DAILY_FIELDS: BudgetField[] = [
-  { key: 'budget_bbm', emoji: '\u26fd', label: 'BBM', hint: 'Per hari' },
-  { key: 'budget_makan', emoji: '\ud83c\udf5c', label: 'Makan', hint: 'Per hari' },
-  { key: 'budget_rokok', emoji: '\ud83d\udeac', label: 'Rokok', hint: 'Per hari' },
-  { key: 'budget_pulsa', emoji: '\ud83d\udcf1', label: 'Pulsa', hint: 'Per hari' },
+  { key: 'budget_bbm', emoji: '⛽', label: 'BBM', hint: 'Per hari' },
+  { key: 'budget_makan', emoji: '🍜', label: 'Makan', hint: 'Per hari' },
+  { key: 'budget_rokok', emoji: '🚬', label: 'Rokok', hint: 'Per hari' },
+  { key: 'budget_pulsa', emoji: '📱', label: 'Pulsa', hint: 'Per hari' },
 ]
 
 const MONTHLY_FIELDS: BudgetField[] = [
-  { key: 'budget_rt', emoji: '\ud83c\udfe0', label: 'RT/Rumah Tangga', hint: 'Per bulan' },
+  { key: 'budget_rt', emoji: '🏠', label: 'RT/Rumah Tangga', hint: 'Per bulan' },
 ]
 
 export function Settings() {
@@ -124,7 +124,7 @@ export function Settings() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-gray-800 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">\u2699\ufe0f Pengaturan</h1>
+        <h1 className="text-lg font-bold">⚙️ Pengaturan</h1>
         <p className="text-sm text-gray-400">Atur budget harian & bulanan</p>
       </div>
 
@@ -170,7 +170,7 @@ export function Settings() {
                   : 'bg-gray-200 text-gray-400'
             }`}
           >
-            {saving ? '\u23f3 Menyimpan...' : saved ? '\u2705 Tersimpan!' : '\ud83d\udcbe Simpan Pengaturan'}
+            {saving ? '⏳ Menyimpan...' : saved ? '✅ Tersimpan!' : '💾 Simpan Pengaturan'}
           </button>
 
           {/* App info */}

@@ -6,7 +6,9 @@ interface Category {
 
 const INCOME_CATEGORIES: Category[] = [
   { id: 'order', emoji: '🛵', label: 'Order' },
+  { id: 'tips', emoji: '💝', label: 'Tips' },
   { id: 'bonus', emoji: '🎁', label: 'Bonus' },
+  { id: 'insentif', emoji: '🏆', label: 'Insentif' },
   { id: 'lainnya_masuk', emoji: '📦', label: 'Lainnya' },
 ]
 
