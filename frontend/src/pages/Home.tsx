@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
-import { formatRupiah, todayISO, formatDateLong } from '../lib/format'
+import { todayISO, formatDateLong } from '../lib/format'
 import { SummaryCard } from '../components/SummaryCard'
 import { BudgetBar } from '../components/BudgetBar'
 import { DueAlert } from '../components/DueAlert'
