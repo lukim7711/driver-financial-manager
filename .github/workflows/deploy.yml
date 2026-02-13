@@ -1,7 +1,9 @@
 name: CD — Deploy to Cloudflare
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -9,6 +11,7 @@ jobs:
   deploy-api:
     name: Deploy API (Workers)
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     defaults:
       run:
         working-directory: api
@@ -30,6 +33,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend (Pages)
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     defaults:
       run:
         working-directory: frontend
