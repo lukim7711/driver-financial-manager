@@ -14,11 +14,11 @@
     ]
   },
 
-  // Migrations for Durable Objects
+  // Migrations for Durable Objects (free plan requires new_sqlite_classes)
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["MoneyManagerDB"]
+      "new_sqlite_classes": ["MoneyManagerDB"]
     }
   ],
 
