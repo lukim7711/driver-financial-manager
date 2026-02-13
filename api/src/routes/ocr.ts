@@ -131,7 +131,7 @@ route.post('/', async (c) => {
       ocrFormData = new FormData()
       ocrFormData.append('file', file)
       ocrFormData.append('apikey', apiKey)
-      ocrFormData.append('language', 'ind')
+      ocrFormData.append('language', 'eng')
       ocrFormData.append('isOverlayRequired', 'false')
       ocrFormData.append('OCREngine', '2')
     } else {
