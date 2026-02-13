@@ -15,10 +15,25 @@ interface TodaySummary {
 }
 
 interface BudgetInfo {
-  total_daily: number
+  daily_expense: number
+  monthly_rt: number
   spent_today: number
   remaining: number
   percentage_used: number
+}
+
+interface DailyTarget {
+  target_amount: number
+  earned_today: number
+  gap: number
+  is_on_track: boolean
+  breakdown: {
+    daily_expense: number
+    prorated_rt: number
+    daily_debt: number
+  }
+  days_remaining: number
+  target_date: string
 }
 
 interface UpcomingDue {
@@ -42,6 +57,7 @@ interface DashboardData {
   date: string
   today: TodaySummary
   budget: BudgetInfo
+  daily_target: DailyTarget
   upcoming_dues: UpcomingDue[]
   debt_summary: DebtSummary
 }
@@ -106,55 +122,45 @@ route.get('/', async (c) => {
       transaction_count: txCount,
     }
 
-    // 2. Budget calculation
+    // 2. Load budget settings
     const settingsRows = await queryDB(db,
       `SELECT key, value FROM settings WHERE key LIKE 'budget_%'`
     )
-    let totalBudget = 0
+    const budgetMap: Record<string, number> = {}
     for (const row of settingsRows) {
-      totalBudget += Number(row.value) || 0
+      budgetMap[String(row.key)] = Number(row.value) || 0
     }
-    // Default budget if no settings
-    if (totalBudget === 0) totalBudget = 172000
 
-    const spentNonDebt = expense
-    const budgetRemaining = totalBudget - spentNonDebt
-    const pctUsed = totalBudget > 0
-      ? Math.round((spentNonDebt / totalBudget) * 100)
+    const dailyExpenseBudget =
+      (budgetMap['budget_bbm'] ?? 40000) +
+      (budgetMap['budget_makan'] ?? 25000) +
+      (budgetMap['budget_rokok'] ?? 27000) +
+      (budgetMap['budget_pulsa'] ?? 5000)
+    const monthlyRT = budgetMap['budget_rt'] ?? 75000
+    const proratedRT = Math.round(monthlyRT / 30)
+
+    const totalDailyBudget = dailyExpenseBudget + proratedRT
+    const budgetRemaining = totalDailyBudget - expense
+    const pctUsed = totalDailyBudget > 0
+      ? Math.round((expense / totalDailyBudget) * 100)
       : 0
 
     const budget: BudgetInfo = {
-      total_daily: totalBudget,
-      spent_today: spentNonDebt,
+      daily_expense: dailyExpenseBudget,
+      monthly_rt: monthlyRT,
+      spent_today: expense,
       remaining: budgetRemaining,
       percentage_used: pctUsed,
     }
 
-    // 3. Upcoming dues (next 7 days + overdue)
-    const dueRows = await queryDB(db,
-      `SELECT ds.debt_id, d.platform, ds.due_date, ds.amount
-      FROM debt_schedule ds
-      JOIN debts d ON ds.debt_id = d.id
-      WHERE ds.status = 'unpaid' AND ds.due_date <= date(?, '+7 days')
-      ORDER BY ds.due_date ASC`,
-      [date]
+    // 3. Daily target calculation
+    const targetRows = await queryDB(db,
+      `SELECT value FROM settings WHERE key = 'debt_target_date'`
     )
+    const targetDate = targetRows[0]
+      ? String(targetRows[0].value)
+      : '2026-04-13'
 
-    const upcoming_dues: UpcomingDue[] = dueRows.map((row) => {
-      const dueDate = String(row.due_date)
-      const diffMs = new Date(dueDate).getTime() - new Date(date).getTime()
-      const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-      return {
-        debt_id: String(row.debt_id),
-        platform: String(row.platform),
-        due_date: dueDate,
-        amount: Number(row.amount) || 0,
-        days_until: daysUntil,
-        urgency: getUrgency(daysUntil),
-      }
-    })
-
-    // 4. Debt summary
     const debtRows = await queryDB(db,
       `SELECT
         COALESCE(SUM(total_original), 0) as total_original,
@@ -169,13 +175,50 @@ route.get('/', async (c) => {
       ? Math.round((totalPaid / totalOriginal) * 100)
       : 0
 
-    // Get target date from settings
-    const targetRows = await queryDB(db,
-      `SELECT value FROM settings WHERE key = 'debt_target_date'`
+    const diffMs = new Date(targetDate).getTime() - new Date(date).getTime()
+    const daysRemaining = Math.max(Math.ceil(diffMs / (1000 * 60 * 60 * 24)), 1)
+    const dailyDebt = Math.round(totalRemaining / daysRemaining)
+
+    const targetAmount = dailyExpenseBudget + proratedRT + dailyDebt
+    const gap = income - targetAmount
+
+    const daily_target: DailyTarget = {
+      target_amount: targetAmount,
+      earned_today: income,
+      gap,
+      is_on_track: gap >= 0,
+      breakdown: {
+        daily_expense: dailyExpenseBudget,
+        prorated_rt: proratedRT,
+        daily_debt: dailyDebt,
+      },
+      days_remaining: daysRemaining,
+      target_date: targetDate,
+    }
+
+    // 4. Upcoming dues (next 7 days + overdue)
+    const dueRows = await queryDB(db,
+      `SELECT ds.debt_id, d.platform, ds.due_date, ds.amount
+      FROM debt_schedule ds
+      JOIN debts d ON ds.debt_id = d.id
+      WHERE ds.status = 'unpaid' AND ds.due_date <= date(?, '+7 days')
+      ORDER BY ds.due_date ASC`,
+      [date]
     )
-    const targetDate = targetRows[0]
-      ? String(targetRows[0].value)
-      : '2026-04-13'
+
+    const upcoming_dues: UpcomingDue[] = dueRows.map((row) => {
+      const dueDate = String(row.due_date)
+      const dMs = new Date(dueDate).getTime() - new Date(date).getTime()
+      const daysUntil = Math.ceil(dMs / (1000 * 60 * 60 * 24))
+      return {
+        debt_id: String(row.debt_id),
+        platform: String(row.platform),
+        due_date: dueDate,
+        amount: Number(row.amount) || 0,
+        days_until: daysUntil,
+        urgency: getUrgency(daysUntil),
+      }
+    })
 
     const debt_summary: DebtSummary = {
       total_original: totalOriginal,
@@ -189,6 +232,7 @@ route.get('/', async (c) => {
       date,
       today,
       budget,
+      daily_target,
       upcoming_dues,
       debt_summary,
     }
