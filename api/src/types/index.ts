@@ -34,6 +34,15 @@ export interface DebtSchedule {
   paid_amount: number | null
 }
 
+export interface MonthlyExpense {
+  id: string
+  name: string
+  emoji: string
+  amount: number
+  is_deleted: number
+  created_at: string
+}
+
 export interface ApiResponse<T> {
   success: boolean
   data?: T

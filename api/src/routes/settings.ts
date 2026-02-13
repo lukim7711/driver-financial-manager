@@ -13,12 +13,18 @@ function getDB(env: Bindings) {
   return env.DB.get(id)
 }
 
-async function queryDB(db: DurableObjectStub, sql: string, params: unknown[] = []) {
+async function queryDB(
+  db: DurableObjectStub,
+  sql: string,
+  params: unknown[] = []
+) {
   const res = await db.fetch(new Request('http://do/query', {
     method: 'POST',
     body: JSON.stringify({ query: sql, params }),
   }))
-  const result = await res.json() as ApiResponse<Record<string, unknown>[]>
+  const result = await res.json() as ApiResponse<
+    Record<string, unknown>[]
+  >
   return result.data || []
 }
 
@@ -27,7 +33,6 @@ interface BudgetSettings {
   budget_makan: number
   budget_rokok: number
   budget_pulsa: number
-  budget_rt: number
 }
 
 const DEFAULT_BUDGETS: BudgetSettings = {
@@ -35,10 +40,11 @@ const DEFAULT_BUDGETS: BudgetSettings = {
   budget_makan: 25000,
   budget_rokok: 27000,
   budget_pulsa: 5000,
-  budget_rt: 75000,
 }
 
-const BUDGET_KEYS = Object.keys(DEFAULT_BUDGETS) as (keyof BudgetSettings)[]
+const BUDGET_KEYS = Object.keys(
+  DEFAULT_BUDGETS
+) as (keyof BudgetSettings)[]
 const DEFAULT_TARGET_DATE = '2026-04-13'
 
 // GET /api/settings
@@ -46,7 +52,9 @@ route.get('/', async (c) => {
   try {
     const db = getDB(c.env)
     const rows = await queryDB(db,
-      `SELECT key, value FROM settings WHERE key LIKE 'budget_%' OR key = 'debt_target_date'`
+      `SELECT key, value FROM settings
+       WHERE key LIKE 'budget_%'
+          OR key = 'debt_target_date'`
     )
 
     const settings: BudgetSettings = { ...DEFAULT_BUDGETS }
@@ -56,26 +64,37 @@ route.get('/', async (c) => {
       const key = String(row.key)
       if (key === 'debt_target_date') {
         debtTargetDate = String(row.value)
-      } else if (BUDGET_KEYS.includes(key as keyof BudgetSettings)) {
-        settings[key as keyof BudgetSettings] = Number(row.value) || DEFAULT_BUDGETS[key as keyof BudgetSettings]
+      } else if (
+        BUDGET_KEYS.includes(key as keyof BudgetSettings)
+      ) {
+        settings[key as keyof BudgetSettings] =
+          Number(row.value) ||
+          DEFAULT_BUDGETS[key as keyof BudgetSettings]
       }
     }
 
-    const dailyTotal = settings.budget_bbm + settings.budget_makan
-      + settings.budget_rokok + settings.budget_pulsa
+    const dailyTotal =
+      settings.budget_bbm +
+      settings.budget_makan +
+      settings.budget_rokok +
+      settings.budget_pulsa
 
     return c.json<ApiResponse<unknown>>({
       success: true,
       data: {
         ...settings,
         daily_total: dailyTotal,
-        monthly_rt: settings.budget_rt,
         debt_target_date: debtTargetDate,
       },
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error: error instanceof Error
+          ? error.message
+          : 'Server error',
+      },
       500
     )
   }
@@ -84,7 +103,9 @@ route.get('/', async (c) => {
 // PUT /api/settings
 route.put('/', async (c) => {
   try {
-    const body = await c.req.json<Partial<BudgetSettings> & { debt_target_date?: string }>()
+    const body = await c.req.json<
+      Partial<BudgetSettings> & { debt_target_date?: string }
+    >()
     const db = getDB(c.env)
 
     const updates: { key: string; value: string }[] = []
@@ -95,7 +116,10 @@ route.put('/', async (c) => {
         const val = Number(body[key])
         if (!Number.isInteger(val) || val < 0) {
           return c.json<ApiResponse<never>>(
-            { success: false, error: `${key} harus integer >= 0` },
+            {
+              success: false,
+              error: `${key} harus integer >= 0`,
+            },
             400
           )
         }
@@ -108,14 +132,20 @@ route.put('/', async (c) => {
       const dateStr = body.debt_target_date
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
         return c.json<ApiResponse<never>>(
-          { success: false, error: 'debt_target_date harus format YYYY-MM-DD' },
+          {
+            success: false,
+            error: 'debt_target_date harus format YYYY-MM-DD',
+          },
           400
         )
       }
       const parsed = new Date(dateStr)
       if (isNaN(parsed.getTime())) {
         return c.json<ApiResponse<never>>(
-          { success: false, error: 'debt_target_date bukan tanggal valid' },
+          {
+            success: false,
+            error: 'debt_target_date bukan tanggal valid',
+          },
           400
         )
       }
@@ -124,7 +154,10 @@ route.put('/', async (c) => {
 
     if (updates.length === 0) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Tidak ada pengaturan yang diupdate' },
+        {
+          success: false,
+          error: 'Tidak ada pengaturan yang diupdate',
+        },
         400
       )
     }
@@ -132,14 +165,17 @@ route.put('/', async (c) => {
     for (const u of updates) {
       await queryDB(db,
         `INSERT INTO settings (key, value) VALUES (?, ?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+         ON CONFLICT(key) DO UPDATE
+         SET value = excluded.value`,
         [u.key, u.value]
       )
     }
 
     // Re-fetch to return updated
     const rows = await queryDB(db,
-      `SELECT key, value FROM settings WHERE key LIKE 'budget_%' OR key = 'debt_target_date'`
+      `SELECT key, value FROM settings
+       WHERE key LIKE 'budget_%'
+          OR key = 'debt_target_date'`
     )
     const settings: BudgetSettings = { ...DEFAULT_BUDGETS }
     let debtTargetDate = DEFAULT_TARGET_DATE
@@ -148,26 +184,37 @@ route.put('/', async (c) => {
       const key = String(row.key)
       if (key === 'debt_target_date') {
         debtTargetDate = String(row.value)
-      } else if (BUDGET_KEYS.includes(key as keyof BudgetSettings)) {
-        settings[key as keyof BudgetSettings] = Number(row.value) || DEFAULT_BUDGETS[key as keyof BudgetSettings]
+      } else if (
+        BUDGET_KEYS.includes(key as keyof BudgetSettings)
+      ) {
+        settings[key as keyof BudgetSettings] =
+          Number(row.value) ||
+          DEFAULT_BUDGETS[key as keyof BudgetSettings]
       }
     }
 
-    const dailyTotal = settings.budget_bbm + settings.budget_makan
-      + settings.budget_rokok + settings.budget_pulsa
+    const dailyTotal =
+      settings.budget_bbm +
+      settings.budget_makan +
+      settings.budget_rokok +
+      settings.budget_pulsa
 
     return c.json<ApiResponse<unknown>>({
       success: true,
       data: {
         ...settings,
         daily_total: dailyTotal,
-        monthly_rt: settings.budget_rt,
         debt_target_date: debtTargetDate,
       },
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error: error instanceof Error
+          ? error.message
+          : 'Server error',
+      },
       500
     )
   }
