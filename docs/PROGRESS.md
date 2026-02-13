@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 05:13 WIB
+> Last Updated: 2026-02-14 05:51 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F015v4 (Smart Debt Form)
+- **Fase:** Refactor — Shared Types + Utils + Path Aliases
 - **Status:** ✅ MERGED
-- **PR:** [#16](https://github.com/lukim7711/driver-financial-manager/pull/16)
-- **Catatan:** 3 mode (Cicilan/Sekali/Catat), mulai bulan dropdown, fix ALL emoji bugs.
+- **PR:** [#18](https://github.com/lukim7711/driver-financial-manager/pull/18) + direct push
+- **Catatan:** DRY codebase — extract shared utils, unify types, add @/ path aliases.
 
 ---
 
-## 🏆 STATUS: v1.8.0 — Smart Debt Form
+## 🏆 STATUS: v1.9.0 — DRY Codebase
 
 ### Infrastructure
 
@@ -24,6 +24,7 @@
 | SETUP | Project Setup | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
 | CD | GitHub Actions Deploy | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass | ✅ DONE | main |
+| PATH-ALIAS | tsconfig @/ path aliases | ✅ DONE | main |
 
 ### MVP Features (8/8 MUST — ALL DONE)
 
@@ -57,6 +58,14 @@
 | CI/CD-FIX | CD waits for CI pass | ✅ DONE | main |
 | EMOJI-FIX | Emoji escape bug di DailyTarget | ✅ DONE | main |
 
+### Refactor / DX
+
+| ID | Nama | Status | PR |
+|----|------|--------|----|
+| DRY-TYPES | Unify shared types (single source of truth) | ✅ DONE | [#18](https://github.com/lukim7711/driver-financial-manager/pull/18) |
+| DRY-UTILS | Extract shared API utils (db, date, id) | ✅ DONE | [#18](https://github.com/lukim7711/driver-financial-manager/pull/18) |
+| PATH-ALIAS | tsconfig @/ and @shared/ aliases | ✅ DONE | main |
+
 ### Bonus
 
 | ID | Nama | Status | PR |
@@ -73,7 +82,7 @@
 
 ---
 
-## API v1.8.0 — 22 Endpoints
+## API v1.9.0 — 22 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -96,6 +105,28 @@
 ---
 
 ## Session Log
+
+### Session 22 — 2026-02-14 05:35–05:51 WIB
+
+**Fase:** Refactor — DRY Codebase
+
+**Problem:** Massive code duplication across API routes:
+- `Bindings` type duplicated in 8 files
+- `getDB()` + `queryDB()` duplicated in 7 files
+- `getNowISO()` duplicated in 4 files
+- `generateId()` duplicated in 3 files
+- Types duplicated between api/ and frontend/
+
+**Solution:**
+1. Created `api/src/utils/db.ts`, `date.ts`, `id.ts` — shared utilities
+2. Updated all 8 route files to import from utils
+3. Created `shared/types.ts` — single source of truth for types
+4. Both `api/` and `frontend/` re-export from shared
+5. Added `@/` and `@shared/` path aliases in tsconfig + vite
+
+**Impact:** ~200+ lines of duplicated code removed
+
+**Result:** CI ✅ → Squash-merged ([#18](https://github.com/lukim7711/driver-financial-manager/pull/18)) + path aliases pushed to main
 
 ### Session 21 — 2026-02-14 05:06–05:13 WIB
 
@@ -189,6 +220,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 05:13 WIB
-- **Total Sessions:** 21
-- **Current Phase:** v1.8.0 — Smart Debt Form (SHIPPED)
+- **Last Updated:** 2026-02-14 05:51 WIB
+- **Total Sessions:** 22
+- **Current Phase:** v1.9.0 — DRY Codebase (SHIPPED)
