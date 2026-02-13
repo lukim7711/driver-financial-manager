@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { ApiResponse } from '../types'
+import type { ApiResponse, Transaction } from '../types'
 
 const VALID_TYPES = ['income', 'expense', 'debt_payment'] as const
 
@@ -103,19 +103,21 @@ route.post('/', async (c) => {
       )
     }
 
-    return c.json<ApiResponse<typeof data>>({
+    const txData: Transaction = {
+      id,
+      created_at: createdAt,
+      type: type as Transaction['type'],
+      amount,
+      category,
+      note: note || '',
+      source: txSource as Transaction['source'],
+      debt_id: null,
+      is_deleted: 0,
+    }
+
+    return c.json<ApiResponse<Transaction>>({
       success: true,
-      data: {
-        id,
-        created_at: createdAt,
-        type,
-        amount,
-        category,
-        note: note || '',
-        source: txSource,
-        debt_id: null,
-        is_deleted: 0,
-      },
+      data: txData,
     }, 201)
   } catch (error) {
     return c.json<ApiResponse<never>>(
@@ -147,8 +149,8 @@ route.get('/', async (c) => {
       }),
     }))
 
-    const result = await res.json() as ApiResponse<unknown[]>
-    return c.json<ApiResponse<unknown[]>>({
+    const result = await res.json() as ApiResponse<Transaction[]>
+    return c.json<ApiResponse<Transaction[]>>({
       success: true,
       data: result.data || [],
     })
