@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { transactionRoute } from './routes/transaction'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -44,17 +45,10 @@ app.get('/', (c) => {
   })
 })
 
-/** Get Durable Object stub for database access */
-export function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
+// API routes
+app.route('/api/transactions', transactionRoute)
 
-// API routes (stubs — will call getDB() when implemented per feature)
-app.get('/api/transactions', async (c) => {
-  return c.json({ success: true, data: [] })
-})
-
+// Stub routes (will be implemented in future features)
 app.get('/api/debts', async (c) => {
   return c.json({ success: true, data: [] })
 })
@@ -86,7 +80,6 @@ app.onError((err, c) => {
   }, 500)
 })
 
-// Export Durable Object class
 export { MoneyManagerDB }
 
 export default app

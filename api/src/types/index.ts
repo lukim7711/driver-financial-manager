@@ -1,30 +1,27 @@
-// ============================================================================
-// Shared TypeScript Types — Backend API
-// ============================================================================
-
 export interface Transaction {
   id: string
   created_at: string
   type: 'income' | 'expense' | 'debt_payment'
   amount: number
   category: string
-  note: string | null
+  note: string
   source: 'manual' | 'ocr'
   debt_id: string | null
-  is_deleted: 0 | 1
+  is_deleted: number
 }
 
 export interface Debt {
   id: string
   platform: string
-  total_original: number
-  total_remaining: number
+  product_name: string
+  total_amount: number
+  remaining_amount: number
   monthly_installment: number
-  due_day: number
-  late_fee_type: 'pct_monthly' | 'pct_daily'
-  late_fee_rate: number
   total_installments: number
   paid_installments: number
+  next_due_date: string
+  status: 'active' | 'paid_off'
+  created_at: string
 }
 
 export interface DebtSchedule {
@@ -32,14 +29,9 @@ export interface DebtSchedule {
   debt_id: string
   due_date: string
   amount: number
-  status: 'unpaid' | 'paid' | 'late'
-  paid_date: string | null
+  status: 'pending' | 'paid' | 'overdue'
+  paid_at: string | null
   paid_amount: number | null
-}
-
-export interface Settings {
-  key: string
-  value: string
 }
 
 export interface ApiResponse<T> {

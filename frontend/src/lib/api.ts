@@ -1,27 +1,32 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
-export async function apiRequest<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T | null> {
+interface ApiSuccessResponse<T> {
+  success: true
+  data: T
+}
+
+interface ApiErrorResponse {
+  success: false
+  error: string
+}
+
+type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse
+
+export async function apiClient<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
+    const url = `${API_BASE}${path}`
+    const res = await fetch(url, {
+      ...init,
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers,
+        ...init?.headers,
       },
     })
-
-    const json = await response.json()
-
-    if (!json.success) {
-      throw new Error(json.error || 'API request failed')
-    }
-
-    return json.data as T
-  } catch (error) {
-    console.error('API request error:', error)
-    return null
+    return await res.json() as ApiResponse<T>
+  } catch {
+    return { success: false, error: 'Koneksi gagal' }
   }
 }

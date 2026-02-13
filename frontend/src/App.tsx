@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
-import Home from './pages/Home'
-import QuickInput from './pages/QuickInput'
-import Debts from './pages/Debts'
-import Report from './pages/Report'
-import Settings from './pages/Settings'
+import { Home } from './pages/Home'
+import { QuickInput } from './pages/QuickInput'
+import { Debts } from './pages/Debts'
+import { Report } from './pages/Report'
+import { Settings } from './pages/Settings'
 
-export default function App() {
+export function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">

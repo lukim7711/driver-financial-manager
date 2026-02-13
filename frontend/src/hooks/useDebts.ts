@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useApi } from './useApi'
 import type { Debt } from '../types'
 
@@ -6,13 +6,14 @@ export function useDebts() {
   const { loading, error, execute } = useApi<Debt[]>()
   const [debts, setDebts] = useState<Debt[]>([])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await execute('/api/debts')
-      if (result) setDebts(result)
-    }
-    void fetchData()
+  const fetchDebts = useCallback(async () => {
+    const result = await execute('/api/debts')
+    if (result) setDebts(result)
   }, [execute])
 
-  return { debts, loading, error }
+  useEffect(() => {
+    void fetchDebts()
+  }, [fetchDebts])
+
+  return { debts, loading, error, refetch: fetchDebts }
 }
