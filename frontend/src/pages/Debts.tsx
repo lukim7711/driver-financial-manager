@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../lib/api'
 import { formatRupiah } from '../lib/format'
+import { useToast } from '../components/Toast'
 import { DebtCard } from '../components/DebtCard'
 import { PayDialog } from '../components/PayDialog'
 import { PaySuccess } from '../components/PaySuccess'
@@ -57,6 +58,7 @@ interface PayResult {
 }
 
 export function Debts() {
+  const toast = useToast()
   const [data, setData] = useState<DebtData | null>(
     null
   )
@@ -78,9 +80,13 @@ export function Debts() {
     const res = await apiClient<DebtData>(
       '/api/debts'
     )
-    if (res.success && res.data) setData(res.data)
+    if (res.success && res.data) {
+      setData(res.data)
+    } else if (!res.success) {
+      toast.error(res.error)
+    }
     setLoading(false)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     void fetchDebts()
@@ -88,7 +94,6 @@ export function Debts() {
 
   const handlePay = (debt: Debt) => {
     if (debt.debt_type === 'record') {
-      // Record mode: create fake schedule
       setPayTarget({
         debt,
         schedule: {
@@ -130,6 +135,8 @@ export function Debts() {
     if (res.success && res.data) {
       setPayTarget(null)
       setPayResult(res.data)
+    } else if (!res.success) {
+      toast.error(res.error)
     }
     return res
   }
@@ -162,7 +169,10 @@ export function Debts() {
     setSaving(false)
     if (res.success) {
       setShowAdd(false)
+      toast.success(`Hutang "${formData.platform}" ditambahkan`)
       void fetchDebts()
+    } else {
+      toast.error(res.error)
     }
   }
 
@@ -187,7 +197,10 @@ export function Debts() {
     setSaving(false)
     if (res.success) {
       setEditTarget(null)
+      toast.success('Hutang diperbarui')
       void fetchDebts()
+    } else {
+      toast.error(res.error)
     }
   }
 
@@ -200,8 +213,11 @@ export function Debts() {
     )
     setSaving(false)
     if (res.success) {
+      toast.success(`"${deleteTarget.platform}" dihapus`)
       setDeleteTarget(null)
       void fetchDebts()
+    } else {
+      toast.error(res.error)
     }
   }
 

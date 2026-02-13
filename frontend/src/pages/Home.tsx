@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../lib/api'
 import { todayISO, formatDateLong } from '../lib/format'
+import { useToast } from '../components/Toast'
 import { SummaryCard } from '../components/SummaryCard'
 import { DailyTarget } from '../components/DailyTarget'
 import { BudgetBar } from '../components/BudgetBar'
@@ -57,6 +58,7 @@ interface DashboardData {
 }
 
 export function Home() {
+  const toast = useToast()
   const [data, setData] = useState<DashboardData | null>(
     null
   )
@@ -70,10 +72,12 @@ export function Home() {
     )
     if (res.success && res.data) {
       setData(res.data)
+    } else if (!res.success) {
+      toast.error(res.error)
     }
     setLoading(false)
     setRefreshing(false)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     void fetchDashboard()
@@ -137,10 +141,10 @@ export function Home() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold">
-              💰 Money Manager
+              {'\ud83d\udcb0'} Money Manager
             </h1>
             <p className="text-sm text-emerald-100">
-              📅 {formatDateLong(todayISO())}
+              {'\ud83d\udcc5'} {formatDateLong(todayISO())}
             </p>
           </div>
           <button
@@ -150,7 +154,7 @@ export function Home() {
               refreshing ? 'animate-spin' : ''
             }`}
           >
-            🔄
+            {'\ud83d\udd04'}
           </button>
         </div>
       </div>
@@ -181,7 +185,7 @@ export function Home() {
           daysRemaining={target.days_remaining}
         />
 
-        {/* Budget bar — daily only, no prorate */}
+        {/* Budget bar */}
         <BudgetBar
           totalDaily={budget.daily_total}
           spentToday={budget.spent_today}
@@ -193,7 +197,7 @@ export function Home() {
         {dues.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">
-              ⚠️ JATUH TEMPO
+              {'\u26a0\ufe0f'} JATUH TEMPO
             </h2>
             {dues.map((due) => (
               <DueAlert
