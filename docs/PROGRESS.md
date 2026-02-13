@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 04:11 WIB
+> Last Updated: 2026-02-14 04:32 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F015v2 (Unified Debt Form)
+- **Fase:** F015v3 (Clean Debt Form)
 - **Status:** ✅ MERGED
-- **PR:** [#14](https://github.com/lukim7711/driver-financial-manager/pull/14)
-- **Catatan:** 1 form, 0 toggle, 3 skenario (flat/dinamis/pinjaman). Replaces F015v1 toggle.
+- **PR:** [#15](https://github.com/lukim7711/driver-financial-manager/pull/15)
+- **Catatan:** Redesign form hutang: 11→6 sections, auto-calc brp kali, fix emoji bug.
 
 ---
 
-## 🏆 STATUS: v1.6.0 — Unified Debt Form
+## 🏆 STATUS: v1.7.0 — Clean Debt Form
 
 ### Infrastructure
 
@@ -49,7 +49,8 @@
 | BDG-FIX | Budget Harian CRUD + Fix Prorate | ✅ DONE | [#11](https://github.com/lukim7711/driver-financial-manager/pull/11) |
 | F009 | Ringkasan Mingguan | ✅ DONE | [#12](https://github.com/lukim7711/driver-financial-manager/pull/12) |
 | F015 | Flexible Debt Schedules | ✅ DONE | [#13](https://github.com/lukim7711/driver-financial-manager/pull/13) |
-| F015v2 | Unified Debt Form (1 form, 3 skenario) | ✅ DONE | [#14](https://github.com/lukim7711/driver-financial-manager/pull/14) |
+| F015v2 | Unified Debt Form (schedules[]) | ✅ DONE | [#14](https://github.com/lukim7711/driver-financial-manager/pull/14) |
+| F015v3 | Clean Debt Form + Emoji Fix | ✅ DONE | [#15](https://github.com/lukim7711/driver-financial-manager/pull/15) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -71,7 +72,7 @@
 
 ---
 
-## API v1.6.0 — 22 Endpoints
+## API v1.7.0 — 22 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -95,28 +96,25 @@
 
 ## Session Log
 
+### Session 20 — 2026-02-14 04:21–04:32 WIB
+
+**Fase:** F015v3 (Clean Debt Form)
+
+**Problem:** Screenshot menunjukkan emoji muncul sebagai `\u26a1` teks mentah + form terlalu ramai (11 sections, "Shortcut Isi Cepat" jargon).
+
+**Fix:**
+- Emoji: gunakan `{"\u26a1"}` JS expression di JSX, bukan bare `\u26a1`
+- Form redesign: 11 → 6 sections, 9 → 5 steps
+- Auto-calc "brp kali" dari `ceil(total/cicilan)`
+- Hapus Denda/Catatan (edit nanti via ✏️)
+- Error hanya muncul saat Simpan
+
+**Result:** CI ✅ U2192 Squash-merged ([#15](https://github.com/lukim7711/driver-financial-manager/pull/15))
+
 ### Session 19 — 2026-02-14 04:03–04:11 WIB
 
 **Fase:** F015v2 (Unified Debt Form)
-
-**Problem:** F015v1 toggle Cicilan/Pinjaman couldn’t handle dynamic installments (different amount per month). Real example: Akulaku Feb-May Rp162.845, Jun Rp20.798.
-
-**Solution:** 1 form, 0 toggle:
-- ⚡ Shortcut “Isi Rata”: auto-fill schedule rows
-- Editable per-row: date picker + amount + 🗑️ delete
-- ➕ Tambah Jadwal: manual row add
-- Total checker: real-time ✅/⚠️
-
-**Backend:**
-- `POST /api/debts` accepts `schedules[]` array
-- Validates `sum(schedules) === total_original`
-- Auto-detects: 1 schedule = simple, N = installment
-
-**Frontend:**
-- `AddDebtForm.tsx`: complete rewrite, unified form
-- `Debts.tsx`: wire new data shape
-
-**Result:** CI ✅ PASS → Squash-merged ([#14](https://github.com/lukim7711/driver-financial-manager/pull/14))
+**Result:** Squash-merged ([#14](https://github.com/lukim7711/driver-financial-manager/pull/14))
 
 ### Session 18 — 2026-02-14 03:37–03:56 WIB
 
@@ -179,6 +177,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 04:11 WIB
-- **Total Sessions:** 19
-- **Current Phase:** v1.6.0 — Unified Debt Form (SHIPPED)
+- **Last Updated:** 2026-02-14 04:32 WIB
+- **Total Sessions:** 20
+- **Current Phase:** v1.7.0 — Clean Debt Form (SHIPPED)
