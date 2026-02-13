@@ -1,18 +1,18 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-13 23:02 WIB
+> Last Updated: 2026-02-13 23:10 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-13
-- **Fase:** Fase 7 — Build Loop (F004)
+- **Fase:** Fase 8 — Build Loop (F005+F006)
 - **Status:** ✅ DONE
-- **Branch:** `feat/F004-home-dashboard`
-- **PR:** [#4](https://github.com/lukim7711/driver-financial-manager/pull/4) — MERGED
-- **Catatan:** Home Dashboard — ringkasan keuangan 1 pandangan
+- **Branch:** `feat/F005-F006-debts`
+- **PR:** [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) — MERGED
+- **Catatan:** Status Hutang + Bayar Cicilan (full & partial)
 
 ---
 
@@ -32,8 +32,8 @@
 | F002 | Upload Struk OCR | MUST | ✅ | ⬜ TODO | - |
 | F003 | Pre-loaded Data Hutang | MUST | ✅ | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
 | F004 | Home Dashboard | MUST | ✅ | ✅ DONE | [#4](https://github.com/lukim7711/driver-financial-manager/pull/4) |
-| F005 | Status Hutang | MUST | ✅ | ⬜ TODO | - |
-| F006 | Bayar Hutang (Tandai Lunas) | MUST | ✅ | ⬜ TODO | - |
+| F005 | Status Hutang | MUST | ✅ | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
+| F006 | Bayar Hutang (Tandai Lunas) | MUST | ✅ | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
 | F007 | Edit/Hapus Transaksi | MUST | ✅ | ⬜ TODO | - |
 | F008 | Laporan Harian | MUST | ✅ | ⬜ TODO | - |
 
@@ -49,64 +49,60 @@
 
 ## Build Order (Remaining)
 
-1. [ ] **F005** — Status Hutang
-2. [ ] **F006** — Bayar Hutang
-3. [ ] **F008** — Laporan Harian
-4. [ ] **F007** — Edit/Delete Transaction
-5. [ ] **F002** — OCR Upload (last, needs API key)
+1. [ ] **F008** — Laporan Harian
+2. [ ] **F007** — Edit/Delete Transaction
+3. [ ] **F002** — OCR Upload (last, needs API key)
 
 ---
 
 ## Session Log
 
-### Session 7 — 2026-02-13 22:57 WIB
+### Session 8 — 2026-02-13 23:03 WIB
 
-**Fase:** Fase 7 — Build F004 Home Dashboard
+**Fase:** Fase 8 — Build F005+F006 (Status Hutang + Bayar Cicilan)
 
 **Yang dikerjakan:**
 
 #### Backend
-- ✅ `api/src/routes/dashboard.ts` — GET /api/dashboard?date=YYYY-MM-DD
-  - 5 aggregated queries: today summary, budget, upcoming dues, debt summary, target date
-  - Urgency levels: overdue (≤0d), critical (1-3d), warning (4-7d), normal (>7d)
-  - Budget from settings table (bbm+makan+rokok+pulsa+rt = Rp172k)
-- ✅ `api/src/index.ts` — Mount dashboard route, version bump 0.2.0
+- ✅ `api/src/routes/debt.ts` — GET /api/debts + POST /api/debts/:id/pay
+  - GET: list all debts + schedules, sorted by urgency (nearest due first)
+  - POST: atomic insert tx + update schedule + update debt remaining
+  - Partial payment: accumulated paid_amount, auto-complete when total ≥ cicilan
+  - Validation: schedule unpaid, amount > 0, amount ≤ remaining
+- ✅ `api/src/index.ts` — Mount debt route, version 0.3.0
 
 #### Frontend
-- ✅ `Home.tsx` — Full dashboard page with pull-to-refresh
-- ✅ `SummaryCard.tsx` — Pemasukan/Pengeluaran/Profit (warna dinamis)
-- ✅ `BudgetBar.tsx` — Progress bar 3 warna (hijau/kuning/merah) + OVER badge
-- ✅ `DueAlert.tsx` — Alert jatuh tempo dengan urgency styling (4 levels)
-- ✅ `DebtProgress.tsx` — Total hutang + progress bar + target lunas + 🎉 banner
-- ✅ `BottomNav.tsx` — Fixed bottom nav dengan floating ➕ button
-- ✅ `format.ts` — Added formatDateLong()
+- ✅ `Debts.tsx` — Page: summary header + sorted card list + pay orchestration
+- ✅ `DebtCard.tsx` — Urgency dots (🔴🟡⚪), progress bar, tap-to-expand detail + schedule table
+- ✅ `PayDialog.tsx` — Bottom sheet: full pay (1 tap) / partial (custom input)
+- ✅ `PaySuccess.tsx` — Result screen: paid amount, remaining, navigate options
 
-#### Edge Cases Handled
-- Budget exceeded → red bar + "OVER" badge
-- Overdue debt → "X HARI TERLAMBAT!"
-- All debts paid → 🎉 celebration banner
-- No transactions → "Belum ada transaksi hari ini"
+#### Key Features
+- Card list sorted by urgency (overdue → critical → warning → normal)
+- Full + partial payment with accumulated amounts
+- LUNAS badge + strikethrough on fully paid debts
+- 🎉 celebration banner when all debts cleared
+- Double-tap protection on pay buttons
 
 **CI:** ✅ PASS → Merged
 
-**Status:** ✅ F004 completed
+### Session 7 — 2026-02-13 22:57 WIB
+
+**Fase:** Build F004 Home Dashboard
+- ✅ GET /api/dashboard?date= — 5 aggregated queries
+- ✅ Home.tsx + SummaryCard, BudgetBar, DueAlert, DebtProgress, BottomNav
+- **CI:** ✅ PASS → Merged ([#4](https://github.com/lukim7711/driver-financial-manager/pull/4))
 
 ### Session 6 — 2026-02-13 22:48 WIB
 
-**Fase:** Fase 6 — Build F001 Quick-Tap Input
-
-**Yang dikerjakan:**
-- ✅ POST/GET /api/transactions with validation
-- ✅ QuickInput.tsx — 3-step flow (tipe → kategori → nominal)
-- ✅ PresetButton, CategoryGrid, AmountInput components
-- ✅ Double-tap protection, error handling
-
-**CI:** ✅ PASS → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
+**Fase:** Build F001 Quick-Tap Input
+- ✅ POST/GET /api/transactions + QuickInput 3-step flow
+- **CI:** ✅ PASS → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
 
 ---
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-13 23:02 WIB
-- **Total Sessions:** 7
-- **Current Phase:** Ready for F005 Status Hutang
+- **Last Updated:** 2026-02-13 23:10 WIB
+- **Total Sessions:** 8
+- **Current Phase:** Ready for F008 Laporan Harian
