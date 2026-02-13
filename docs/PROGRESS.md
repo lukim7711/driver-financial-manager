@@ -1,7 +1,7 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 02:28 WIB
+> Last Updated: 2026-02-14 02:35 WIB
 
 ---
 
@@ -9,10 +9,9 @@
 
 - **Tanggal:** 2026-02-14
 - **Fase:** F013 (Biaya Bulanan Dinamis)
-- **Status:** ✅ DONE
-- **Branch:** `feat/F013-biaya-bulanan`
+- **Status:** ✅ MERGED
 - **PR:** [#9](https://github.com/lukim7711/driver-financial-manager/pull/9)
-- **Catatan:** CRUD biaya bulanan + integrasi Target Harian
+- **Catatan:** CRUD biaya bulanan + integrasi Target Harian. CI pass, squash-merged.
 
 ---
 
@@ -45,7 +44,7 @@
 |----|------|--------|--------|
 | DT001 | Daily Target (Target Harian Minimal) | ✅ DONE | main |
 | F014 | Edit Target Tanggal Lunas | ✅ DONE | main |
-| F013 | Biaya Bulanan Dinamis | ✅ DONE | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
+| F013 | Biaya Bulanan Dinamis | ✅ MERGED | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -104,7 +103,7 @@
 
 ## Session Log
 
-### Session 14 — 2026-02-14 02:13–02:28 WIB
+### Session 14 — 2026-02-14 02:13–02:35 WIB
 
 **Fase:** F013 (Biaya Bulanan Dinamis)
 
@@ -125,11 +124,11 @@
 - ✅ DailyTarget: `prorated_rt` → `prorated_monthly`
 - ✅ Home: Update dashboard interfaces
 
-**Files Changed:**
-- Backend: schema.ts, seed.ts, durable-object.ts, monthly-expense.ts (NEW), dashboard.ts, settings.ts, types/index.ts, index.ts
-- Frontend: Settings.tsx, DailyTarget.tsx, Home.tsx, types/index.ts
+**CI Fix:**
+- ✅ TS2339: Narrowed discriminated union di Settings.tsx (3 lokasi)
+- ✅ TS18048: Null-check `rows[0]` di monthly-expense.ts PUT handler
 
-**PR:** [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) — menunggu CI pass
+**Result:** CI ✅ PASS → Squash-merged ([#9](https://github.com/lukim7711/driver-financial-manager/pull/9))
 
 ### Session 13 — 2026-02-14 01:32–01:47 WIB
 
@@ -205,6 +204,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 02:28 WIB
+- **Last Updated:** 2026-02-14 02:35 WIB
 - **Total Sessions:** 14
-- **Current Phase:** v1.2.0 — F013 Biaya Bulanan Dinamis
+- **Current Phase:** v1.2.0 — F013 Biaya Bulanan Dinamis (SHIPPED)
