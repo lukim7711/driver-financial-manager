@@ -8,6 +8,7 @@ import { CategoryBar } from '../components/CategoryBar'
 import { TransactionItem } from '../components/TransactionItem'
 import { EditTransaction } from '../components/EditTransaction'
 import { WeeklyReport } from '../components/WeeklyReport'
+import { ExportCsvButton } from '../components/ExportCsvButton'
 import { BottomNav } from '../components/BottomNav'
 
 interface ExpenseCat {
@@ -46,6 +47,14 @@ interface ReportData {
 function shiftDate(dateStr: string, days: number): string {
   const d = new Date(dateStr)
   d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function getMonday(dateStr: string): string {
+  const d = new Date(dateStr)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
   return d.toISOString().slice(0, 10)
 }
 
@@ -93,13 +102,24 @@ export function Report() {
     void fetchReport(date)
   }
 
+  const weekStart = getMonday(date)
+  const weekEnd = shiftDate(weekStart, 6)
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-purple-600 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">
-          {'\ud83d\udcca'} Laporan
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold">
+            {'\ud83d\udcca'} Laporan
+          </h1>
+          <ExportCsvButton
+            mode={tab}
+            date={date}
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+          />
+        </div>
 
         {/* Tab switcher */}
         <div className="mt-3 flex rounded-lg bg-purple-700 p-1">

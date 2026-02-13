@@ -1,21 +1,21 @@
 # \ud83d\udcca PROGRESS LOG
 # Money Manager \u2014 Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 06:08 WIB
+> Last Updated: 2026-02-14 06:38 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F011 Onboarding + Bugfix
+- **Fase:** F-F05 Export CSV
 - **Status:** \u2705 DONE
-- **PR:** [#19](https://github.com/lukim7711/driver-financial-manager/pull/19) + hotfix main
-- **Catatan:** 5-step walkthrough, emoji fix, refresh button restyle.
+- **Commit:** main (direct push)
+- **Catatan:** Export CSV dari halaman Laporan (harian & mingguan).
 
 ---
 
-## \ud83c\udfc6 STATUS: v2.0.0 \u2014 Onboarding Complete
+## \ud83c\udfc6 STATUS: v2.1.0 \u2014 Export CSV
 
 ### Infrastructure
 
@@ -54,11 +54,18 @@
 | F015v3 | Clean Debt Form + Emoji Fix | \u2705 DONE | [#15](https://github.com/lukim7711/driver-financial-manager/pull/15) |
 | F015v4 | Smart Debt Form (3 modes) | \u2705 DONE | [#16](https://github.com/lukim7711/driver-financial-manager/pull/16) |
 | F011 | Help/Onboarding Walkthrough | \u2705 DONE | [#19](https://github.com/lukim7711/driver-financial-manager/pull/19) |
+| F-F05 | Export CSV | \u2705 DONE | main |
+
+### Bugfixes
+
+| ID | Nama | Status | Commit/PR |
+|----|------|--------|--------|
 | OCR-FIX | OCR entry point + language fix | \u2705 DONE | main |
 | CI-FIX | CD pipeline cache fix | \u2705 DONE | main |
 | CI/CD-FIX | CD waits for CI pass | \u2705 DONE | main |
 | EMOJI-FIX | Emoji escape bug di DailyTarget | \u2705 DONE | main |
 | ONBOARD-FIX | Emoji escape + refresh restyle | \u2705 DONE | main |
+| CONFIRM-DEL | Confirm dialog di Settings delete | \u2705 DONE | main |
 
 ### Refactor / DX
 
@@ -78,7 +85,21 @@
 
 ---
 
-## API v2.0.0 \u2014 22 Endpoints
+## Future Features (from PRD)
+
+| ID | Nama | Status |
+|----|------|--------|
+| F-F01 | Google Maps Integration | \u23f3 Backlog |
+| F-F02 | Trip Tracking | \u23f3 Backlog |
+| F-F03 | AI Learning | \u23f3 Backlog |
+| F-F04 | Grafik/Chart Visual | \u23f3 Backlog |
+| F-F05 | Export CSV | \u2705 DONE |
+| F-F06 | Notifikasi Proaktif | \u23f3 Backlog |
+| F-F07 | Multi-period Report | \u23f3 Backlog |
+
+---
+
+## API v2.1.0 \u2014 22 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -101,6 +122,25 @@
 ---
 
 ## Session Log
+
+### Session 24 \u2014 2026-02-14 06:36\u201306:38 WIB
+
+**Fase:** F-F05 Export CSV
+
+**Implemented:**
+1. `frontend/src/lib/csv-export.ts` \u2014 CSV generation + download utility
+2. `frontend/src/components/ExportCsvButton.tsx` \u2014 Export button component
+3. Updated `Report.tsx` \u2014 Export button in header (both daily & weekly)
+4. Feature spec: `docs/features/F-F05-export-csv.md`
+
+**Technical decisions:**
+- CSV generated client-side (no new API endpoint)
+- Reuses existing `/api/report/daily` data
+- For weekly: fetches 7 daily reports to collect all transactions
+- BOM header (\uFEFF) for Excel compatibility with Bahasa Indonesia
+- Blob + createObjectURL for browser download
+
+**Result:** Pushed to main
 
 ### Session 23 \u2014 2026-02-14 05:53\u201306:08 WIB
 
@@ -217,6 +257,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 06:08 WIB
-- **Total Sessions:** 23
-- **Current Phase:** v2.0.0 \u2014 All Features Complete
+- **Last Updated:** 2026-02-14 06:38 WIB
+- **Total Sessions:** 24
+- **Current Phase:** v2.1.0 \u2014 Export CSV
