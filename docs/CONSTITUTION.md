@@ -1,170 +1,297 @@
-# ⚖️ CONSTITUTION (Aturan Teknis)
-# Driver Financial Manager
+# ⚖️ CONSTITUTION
+# Money Manager — Technical Rules & Stack
 
-> Versi: 1.0 | CONTEXT_VERSION: "CONST-v1.0-20260213"
-
----
-
-> ⚖️ **Dokumen ini adalah hukum tertinggi proyek. AI WAJIB mematuhi setiap aturan di sini. Tidak ada pengecualian.**
+> **Version:** 2.0  
+> **Status:** Active  
+> **Last Updated:** 2026-02-13  
 
 ---
 
-## 1. Tech Stack (TIDAK BOLEH DIUBAH tanpa ADR baru)
+## 1. Tech Stack
 
-> 🚧 **Status:** Belum ditentukan - Akan diisi di Fase 2
+### 1.1 Stack Overview
 
-**Perlu ditentukan:**
-- **Runtime:** [contoh: Cloudflare Workers / Node.js / Deno]
-- **Bahasa:** [contoh: TypeScript / JavaScript]
-- **Database:** [contoh: Durable Objects / PostgreSQL / SQLite]
-- **Framework:** [contoh: Hono / Express / Next.js]
-- **Frontend:** [contoh: React / Vue / Vanilla JS]
-- **Deployment:** [contoh: Cloudflare / Vercel / Railway]
-- **Authentication:** [contoh: Clerk / Auth0 / Custom]
+| Layer | Technology | Justifikasi |
+|-------|-----------|-------------|
+| **Frontend** | React 19 + Vite | Ekosistem terbesar, scalable untuk future features (Maps, Charts, AI dashboard) |
+| **Styling** | Tailwind CSS | Utility-first, mobile-responsive cepat, minimal CSS custom |
+| **Backend API** | Hono | Ultra-ringan, native Cloudflare Workers, TypeScript-first |
+| **Runtime** | Cloudflare Workers | Edge computing, free tier 100k req/hari, global |
+| **Database** | Durable Objects (SQLite) | Persistent, ACID, co-located with Worker, free tier 5GB |
+| **OCR** | ocr.space API | Free 500 req/hari, akurat untuk struk Indonesia |
+| **AI (Future)** | Workers AI — gpt-oss-20b | 20B MoE, reasoning capable, 10k neurons free/hari |
+| **Hosting** | Cloudflare Pages | Static hosting, auto-deploy dari GitHub, free |
+| **Language** | TypeScript | End-to-end type safety, frontend + backend |
+| **PWA** | manifest.json + Service Worker | Install ke home screen, offline cache, app-like UX |
 
-**Tips memilih tech stack:**
+### 1.2 Justifikasi Keputusan Kunci
 
-Tanyakan ke Perplexity:
-> *"Saya ingin membuat aplikasi web untuk driver mengelola keuangan harian dengan fitur pencatatan transaksi, kategori pengeluaran, dan laporan. Rekomendasikan tech stack yang paling sederhana untuk deployment. Saya non-programmer, jadi pilih yang paling minim konfigurasi."*
+#### Kenapa React (bukan Vanilla JS / Svelte / Hono JSX)?
+- Future features membutuhkan Google Maps SDK → `@vis.gl/react-google-maps`
+- Future features membutuhkan charts → Recharts / Nivo
+- Ekosistem library terbesar → fitur apapun yang ditambah, ada library-nya
+- AI code generation paling akurat untuk React (training data terbanyak)
+- Component system scalable untuk app yang akan berkembang
+
+#### Kenapa Hono (bukan Express / Fastify)?
+- Native Cloudflare Workers support
+- Ultra-ringan (14KB), cocok untuk Workers CPU 10ms limit
+- TypeScript-first, middleware ecosystem lengkap
+- Satu bahasa (TS) untuk frontend + backend
+
+#### Kenapa Durable Objects (bukan D1 / KV)?
+- SQLite built-in → relational queries untuk laporan
+- ACID transactions → data keuangan harus konsisten
+- Co-located storage → latency minimal
+- Free tier cukup untuk 1 user (5GB storage)
+
+#### Kenapa ocr.space (bukan Workers AI Vision)?
+- Hemat neuron budget Workers AI untuk future AI features
+- Free 500/hari, cukup untuk personal use
+- Proven accuracy untuk struk Indonesia
+- Simple REST API, cepat diintegrasikan
+
+#### Kenapa gpt-oss-20b (bukan Llama / Mistral)?
+- OpenAI quality, open-weight, free di Workers AI
+- Reasoning capability (adjustable effort: low/medium/high)
+- 128K context window
+- Akan dipakai untuk future AI learning features
+- Saat ini belum dipakai di MVP (hemat neuron)
 
 ---
 
-## 2. Aturan Kode
-
-1. **Bahasa kode:** [TypeScript/JavaScript] (akan ditentukan)
-2. **Komentar kode:** Bahasa Inggris
-3. **Respons user-facing:** Bahasa Indonesia
-4. **Type safety:** Gunakan proper interfaces/types. **Dilarang `any`** kecuali absolutely necessary.
-5. **Error handling:** Setiap fungsi HARUS punya error handling yang proper
-6. **Single Responsibility:** Satu file = satu tanggung jawab
-7. **Naming convention:** 
-   - Variabel/fungsi: `camelCase`, deskriptif, tidak disingkat
-   - Komponen: `PascalCase`
-   - File: `kebab-case.ts`
-   - Konstanta: `UPPER_SNAKE_CASE`
-
----
-
-## 3. Struktur Folder (WAJIB diikuti)
+## 2. Project Structure
 
 ```
-src/
-├── handlers/       ← Handler per fitur (request handling)
-├── services/       ← Business logic
-├── models/         ← Type definitions & interfaces
-├── utils/          ← Helper functions
-├── config/         ← Configuration files
-└── index.ts        ← Entry point
+driver-financial-manager/
+├── frontend/                      # React app → Cloudflare Pages
+│   ├── src/
+│   │   ├── App.tsx                # Root component + routing
+│   │   ├── main.tsx               # React entry point
+│   │   ├── pages/                 # Page-level components (1 per layar)
+│   │   │   ├── Home.tsx           # Dashboard utama
+│   │   │   ├── QuickInput.tsx     # Input transaksi (tap-based)
+│   │   │   ├── Debts.tsx          # Status hutang
+│   │   │   ├── Report.tsx         # Laporan harian/mingguan
+│   │   │   └── Settings.tsx       # Budget & preferences
+│   │   ├── components/            # Reusable UI components
+│   │   │   ├── PresetButton.tsx   # Tombol preset nominal
+│   │   │   ├── CategoryPicker.tsx # Grid pilih kategori
+│   │   │   ├── ProgressBar.tsx    # Progress bar hutang
+│   │   │   ├── TransactionList.tsx # List transaksi + tap to edit
+│   │   │   ├── DebtCard.tsx       # Card per hutang
+│   │   │   ├── OcrUpload.tsx      # Upload + preview struk
+│   │   │   └── Modal.tsx          # Edit/delete modal
+│   │   ├── hooks/                 # Custom React hooks
+│   │   │   ├── useApi.ts          # Fetch wrapper ke Workers API
+│   │   │   ├── useTransactions.ts # Transaction state management
+│   │   │   └── useDebts.ts        # Debt state management
+│   │   ├── lib/                   # Utility libraries
+│   │   │   ├── api.ts             # API client (base URL, headers)
+│   │   │   └── format.ts          # Format Rupiah, tanggal
+│   │   └── types/                 # TypeScript type definitions
+│   │       └── index.ts           # Shared types (Transaction, Debt, etc.)
+│   ├── public/
+│   │   ├── manifest.json          # PWA manifest
+│   │   ├── sw.js                  # Service worker (cache)
+│   │   └── icons/                 # PWA icons (192x192, 512x512)
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   └── package.json
+│
+├── api/                           # Cloudflare Workers (Hono)
+│   ├── src/
+│   │   ├── index.ts               # Worker entry point + Hono app
+│   │   ├── routes/                # API route handlers
+│   │   │   ├── transaction.ts     # CRUD /api/transactions
+│   │   │   ├── debt.ts            # GET /api/debts, POST /api/debts/:id/pay
+│   │   │   ├── report.ts          # GET /api/report/daily, /weekly
+│   │   │   ├── ocr.ts             # POST /api/ocr (proxy to ocr.space)
+│   │   │   └── settings.ts        # GET/PUT /api/settings
+│   │   ├── db/                    # Database layer
+│   │   │   ├── durable-object.ts  # DO class with SQLite schema init
+│   │   │   ├── schema.sql         # CREATE TABLE statements
+│   │   │   └── seed.sql           # INSERT pre-loaded hutang data
+│   │   ├── services/              # Business logic
+│   │   │   ├── transaction.ts     # Transaction CRUD logic
+│   │   │   ├── debt.ts            # Debt payment + progress calculation
+│   │   │   ├── report.ts          # Aggregation queries for reports
+│   │   │   └── budget.ts          # Budget checking logic
+│   │   └── utils/                 # Shared utilities
+│   │       ├── format.ts          # Format currency, date
+│   │       └── response.ts        # Standard API response helpers
+│   ├── wrangler.toml              # CF Worker config
+│   └── package.json
+│
+├── docs/                          # Documentation (Spec-Driven)
+│   ├── PRD.md                     # Product Requirements Document
+│   ├── AI-CONTEXT.md              # AI Navigation Map
+│   ├── CONSTITUTION.md            # This file — Technical Rules
+│   ├── PROGRESS.md                # Progress & session tracking
+│   ├── features/                  # Per-feature specs (Fase 4)
+│   └── adr/                       # Architecture Decision Records
+│
+├── .github/
+│   └── workflows/
+│       └── deploy.yml             # Auto-deploy to Cloudflare
+│
+├── package.json                   # Root workspace config
+├── README.md
+└── .gitignore
 ```
 
-**Aturan:**
-- Setiap fitur baru buat file di `handlers/` dan `services/`
-- Model/types harus didefinisikan di `models/`
-- Utility yang reusable masuk ke `utils/`
+---
+
+## 3. API Contract
+
+### 3.1 Endpoints
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/transactions?date=YYYY-MM-DD` | List transaksi per tanggal |
+| POST | `/api/transactions` | Buat transaksi baru |
+| PUT | `/api/transactions/:id` | Update transaksi |
+| DELETE | `/api/transactions/:id` | Soft delete transaksi |
+| GET | `/api/debts` | List semua hutang + schedule |
+| POST | `/api/debts/:id/pay` | Tandai cicilan bulan ini lunas |
+| GET | `/api/report/daily?date=YYYY-MM-DD` | Laporan harian |
+| GET | `/api/report/weekly?date=YYYY-MM-DD` | Laporan mingguan |
+| POST | `/api/ocr` | Upload image → OCR → return parsed text |
+| GET | `/api/settings` | Get all settings |
+| PUT | `/api/settings` | Update settings |
+| GET | `/api/dashboard` | Home dashboard aggregate data |
+
+### 3.2 Request/Response Format
+
+- Content-Type: `application/json`
+- Image upload: `multipart/form-data`
+- Currency: Integer (Rupiah, no decimals)
+- Dates: ISO 8601 (`2026-02-13`)
+- Timestamps: ISO 8601 with timezone (`2026-02-13T09:30:00+07:00`)
+
+### 3.3 Standard Response
+
+```typescript
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+```
 
 ---
 
-## 4. Pattern yang WAJIB Diikuti
+## 4. Code Rules
 
-> 🚧 Akan diisi saat tech stack sudah ditentukan
+### 4.1 General
 
-Contoh pattern (sesuaikan dengan tech stack):
-- [Contoh: Setiap endpoint → handler di `src/handlers/`]
-- [Contoh: Akses DB selalu melalui service layer, bukan langsung]
-- [Contoh: Error → return user-friendly message, JANGAN throw ke user]
-- [Contoh: Validation input menggunakan schema validator]
+- **Language:** TypeScript strict mode (`strict: true`)
+- **Formatting:** Prettier (default config)
+- **Linting:** ESLint with recommended rules
+- **No `any` type** — semua harus typed
+- **No `console.log` in production** — gunakan structured logging jika perlu
 
----
+### 4.2 Frontend Rules
 
-## 5. Pattern yang DILARANG
+- **Component pattern:** Functional components + hooks only (no class components)
+- **State management:** React useState + useContext (no Redux — app kecil)
+- **Routing:** React Router v7 atau TanStack Router
+- **API calls:** Custom `useApi` hook dengan loading/error states
+- **Styling:** Tailwind CSS utility classes, no inline styles, no CSS modules
+- **Mobile-first:** Semua styling dimulai dari mobile viewport
+- **Accessibility:** Semantic HTML, aria-labels pada interactive elements
 
-- ❌ **Jangan install library baru** tanpa izin eksplisit dari owner
-- ❌ **Jangan ubah schema database** tanpa update dokumentasi di `docs/features/`
-- ❌ **Jangan hardcode secrets/API keys** dalam kode (gunakan environment variables)
-- ❌ **Jangan buat file** di luar struktur folder yang sudah ditentukan
-- ❌ **Jangan skip error handling** dengan alasan "nanti aja"
-- ❌ **Jangan gunakan `any` type** tanpa komentar justifikasi yang kuat
+### 4.3 Backend Rules
 
----
+- **Framework:** Hono (latest stable)
+- **Route pattern:** 1 file per resource di `routes/`
+- **Business logic:** Di `services/`, bukan di route handler
+- **DB access:** Hanya melalui DO class methods
+- **Error handling:** Try-catch di setiap route, return standard ApiResponse
+- **Validation:** Validate semua input di route level sebelum service call
+- **No hardcoded values:** Gunakan `settings` table atau constants file
 
-## 6. Git & Workflow
+### 4.4 Database Rules
 
-1. **TIDAK BOLEH push ke `main` langsung** (kecuali setup awal)
-2. **Branch naming:**
-   - Feature: `feat/f{ID}-{name}` (contoh: `feat/f001-pencatatan-transaksi`)
-   - Bugfix: `fix/{desc}` (contoh: `fix/calculation-error`)
-   - Docs: `docs/{desc}` (contoh: `docs/update-readme`)
-3. **Satu fitur per branch. Satu fitur per sesi.**
-4. **Commit message:** English, conventional format
-   - `feat: add transaction recording feature`
-   - `fix: correct calculation in daily report`
-   - `docs: update PRD with new requirements`
-5. **Pull Request:** Buat PR ke `main` setelah fitur selesai
-6. **Review:** Owner akan review sebelum merge
-
----
-
-## 7. Database Schema Rules
-
-> 🚧 Akan diisi saat database dipilih
-
-**Aturan umum:**
-- Setiap tabel harus punya primary key
-- Gunakan timestamps (`created_at`, `updated_at`) untuk semua tabel
-- Foreign key harus eksplisit
-- Nama tabel: `snake_case`, plural (contoh: `transactions`, `categories`)
+- **Semua amount dalam INTEGER** (Rupiah, no floating point)
+- **Soft delete** — set `is_deleted = 1`, jangan DELETE row
+- **Timestamps dalam ISO 8601** string format
+- **Foreign keys enforced** via SQL constraints
+- **Seed data** — hutang pre-loaded via `seed.sql` saat DO pertama kali init
 
 ---
 
-## 8. Testing Rules
+## 5. Git Workflow
 
-> 🚧 Akan diisi saat tech stack sudah ditentukan
+### 5.1 Branch Strategy
 
-**Target:**
-- [ ] Unit tests untuk business logic kritis
-- [ ] Integration tests untuk API endpoints
-- [ ] Manual testing checklist per fitur
+- **`main`** — production-ready, auto-deploy ke Cloudflare
+- **`feat/{feature-id}`** — per fitur (contoh: `feat/F001-quick-input`)
+- **`fix/{description}`** — bug fixes
+- **`docs/{description}`** — documentation updates
 
----
+### 5.2 Commit Convention
 
-## 9. Security Rules
+```
+type: short description
 
-1. **Input validation:** Semua input dari user HARUS divalidasi
-2. **SQL Injection:** Gunakan parameterized queries SELALU
-3. **XSS Protection:** Sanitize output yang ditampilkan ke user
-4. **Authentication:** [Akan ditentukan sesuai tech stack]
-5. **Secrets:** Simpan di environment variables, JANGAN commit ke Git
+Types:
+- feat: Fitur baru
+- fix: Bug fix
+- docs: Documentation
+- style: Formatting (no logic change)
+- refactor: Code restructure (no feature change)
+- chore: Build, config, dependencies
+```
 
----
+### 5.3 PR Rules
 
-## 10. Performance Rules
-
-- Database query harus efficient (gunakan index)
-- Pagination untuk list data yang banyak
-- Lazy loading untuk assets berat
-- Caching untuk data yang jarang berubah
-
----
-
-## 💡 Cara Melengkapi Constitution
-
-Jika belum tahu tech stack yang cocok, diskusikan dengan Perplexity di Fase 2:
-
-> *"Saya ingin membuat aplikasi web Driver Financial Manager dengan fitur [sebutkan fitur MUST dari PRD]. Rekomendasikan tech stack yang:*
-> 1. *Sederhana untuk non-programmer*
-> 2. *Minim konfigurasi deployment*
-> 3. *Free tier yang cukup untuk MVP*
-> 4. *Ada GitHub integration untuk CI/CD*
-> *Jelaskan reasoning untuk setiap pilihan."*
+- Setiap fitur = 1 branch = 1 PR
+- PR description harus reference feature ID (F001, F002, dll)
+- Squash merge ke main
 
 ---
 
-## Update History
+## 6. Deployment
 
-| Tanggal | Versi | Perubahan |
-|---------|-------|----------|
-| 2026-02-13 | CONST-v1.0 | Initial template - Fase 0 |
+### 6.1 Infrastructure
+
+| Component | Platform | Config |
+|-----------|----------|--------|
+| Frontend | Cloudflare Pages | Auto-deploy dari `main` branch, build: `cd frontend && npm run build` |
+| Backend API | Cloudflare Workers | Deploy via `wrangler deploy` dari `api/` |
+| Database | Durable Objects | Binding di `wrangler.toml` |
+| Secrets | CF Worker Secrets | `OCR_SPACE_API_KEY`, future: `TELEGRAM_BOT_TOKEN` |
+
+### 6.2 Environment Variables / Secrets
+
+| Name | Where | Purpose |
+|------|-------|---------|
+| `OCR_SPACE_API_KEY` | Worker Secret | API key untuk ocr.space |
+| `ENVIRONMENT` | Worker Var | 'production' atau 'development' |
+
+### 6.3 CORS
+
+- Frontend domain (Cloudflare Pages URL) di-whitelist di Worker
+- No wildcard `*` in production
 
 ---
 
-**Status:** 📝 Template ready - Akan dilengkapi di Fase 2
+## 7. Security
+
+- **No authentication** — personal app, 1 user
+- **CORS restricted** — hanya frontend domain yang bisa akses API
+- **Input validation** — semua API input di-validate (type, range, length)
+- **SQL injection prevention** — parameterized queries only (DO SQLite)
+- **No sensitive data in frontend** — API keys hanya di Worker secrets
+- **HTTPS only** — enforced by Cloudflare
+
+---
+
+## Document History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-02-13 | Initial template (empty) |
+| 2.0 | 2026-02-13 | Complete tech stack, code rules, API contract, deployment config |

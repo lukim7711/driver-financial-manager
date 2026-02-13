@@ -1,117 +1,209 @@
-# 🗺️ AI-CONTEXT (Peta Navigasi AI)
-# Driver Financial Manager
+# 🧭 AI-CONTEXT
+# Money Manager — AI Navigation Map
 
-> CONTEXT_VERSION: "CTX-v1.0-20260213"
-> CONTEXT_TRIGGER: "DRIVER-FM-7711"
-
----
-
-> 🚨 **WAJIB: Sebelum menjawab apapun, AI HARUS:**
-> 1. Baca file ini sepenuhnya
-> 2. Baca `docs/CONSTITUTION.md`
-> 3. Baca `docs/PROGRESS.md`
-> 4. Kutip CONTEXT_TRIGGER di awal respons sebagai bukti
+> **Version:** 2.0  
+> **Last Updated:** 2026-02-13  
 
 ---
 
-## Deskripsi Aplikasi
+## 1. Project Summary
 
-**Driver Financial Manager** adalah aplikasi manajemen keuangan yang membantu driver transportasi mengelola pendapatan dan pengeluaran operasional harian untuk membuat keputusan bisnis yang lebih baik.
-
----
-
-## Status Saat Ini
-
-> *Update setiap sesi*
-
-- **Fase:** Fase 0 - Setup Repository ✅
-- **Fitur selesai:** -
-- **Fitur sedang dikerjakan:** -
-- **Fitur belum dimulai:** F001, F002, F003, F004, F005
-- **Branch aktif:** `main`
+**Money Manager** adalah personal financial dashboard (Web PWA) untuk seorang driver ojol yang ingin melunasi hutang Rp 8.851.200 dalam 2 bulan. App mengutamakan kecepatan input (4 tap, 0 ketik, < 3 detik per transaksi) dan real-time tracking hutang.
 
 ---
 
-## 📍 DOCS MAP (Peta Navigasi)
+## 2. Tech Stack
 
-| Jika task adalah... | Baca file ini |
-|---------------------|---------------|
-| Memahami keseluruhan produk | `docs/PRD.md` |
-| Memahami aturan teknis | `docs/CONSTITUTION.md` |
-| Mengerjakan fitur F001 | `docs/features/F001-pencatatan-transaksi.md` |
-| Mengerjakan fitur F002 | `docs/features/F002-kategori-pengeluaran.md` |
-| Mengerjakan fitur F003 | `docs/features/F003-laporan-harian.md` |
-| Mengerjakan fitur F004 | `docs/features/F004-grafik-bulanan.md` |
-| Mengerjakan fitur F005 | `docs/features/F005-export-excel.md` |
-| Melihat keputusan arsitektur | `docs/adr/ADR-001-xxx.md` |
-| Melihat progress | `docs/PROGRESS.md` |
-
----
-
-## Tech Stack Summary
-
-> *Akan diisi setelah CONSTITUTION.md dilengkapi*
-
-[Ringkasan 1 paragraf tentang tech stack pilihan: runtime, bahasa, database, framework, deployment]
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19 + Vite + Tailwind CSS |
+| Backend | Hono on Cloudflare Workers |
+| Database | Durable Objects (SQLite) |
+| OCR | ocr.space API |
+| AI (future) | Workers AI — @cf/openai/gpt-oss-20b |
+| Hosting | Cloudflare Pages + Workers |
+| Language | TypeScript (strict) |
+| PWA | manifest.json + Service Worker |
 
 ---
 
-## File Map (Struktur Kode Saat Ini)
-
-> *Update berkala saat development*
+## 3. Architecture
 
 ```
-src/
-├── index.ts          ← Entry point (belum ada)
-├── handlers/         ← Handler per fitur (belum ada)
-├── services/         ← Business logic (belum ada)
-└── models/           ← Type definitions (belum ada)
+User (Browser HP - PWA)
+   │
+   ▼
+Cloudflare Pages (React SPA)
+   │ REST API calls
+   ▼
+Cloudflare Workers (Hono API)
+   ├── /api/transactions    → CRUD transaksi
+   ├── /api/debts           → Status hutang + bayar
+   ├── /api/report          → Laporan harian/mingguan
+   ├── /api/ocr             → Proxy ke ocr.space
+   ├── /api/settings        → Budget preferences
+   └── /api/dashboard       → Aggregate home data
+   │
+   ▼
+Durable Objects (SQLite)
+   ├── debts            (pre-loaded 5 hutang)
+   ├── debt_schedule    (pre-loaded jadwal cicilan)
+   ├── transactions     (runtime: user input)
+   └── settings         (runtime: budget adjustable)
 ```
 
-**Status:** Struktur folder belum dibuat, masih dalam fase planning.
+---
+
+## 4. File Map
+
+### 4.1 Documentation (`docs/`)
+
+| File | Purpose | When to Read |
+|------|---------|--------------|
+| `docs/PRD.md` | Product requirements, studi kasus, features, UI flows | Memahami APA yang dibangun |
+| `docs/CONSTITUTION.md` | Tech stack, code rules, API contract, deployment | Memahami BAGAIMANA membangun |
+| `docs/AI-CONTEXT.md` | This file — navigation map | Orientasi awal sebelum kerja |
+| `docs/PROGRESS.md` | Session log, current phase, decisions | Status terkini proyek |
+| `docs/features/*.md` | Per-feature detailed spec | Saat implement fitur spesifik |
+| `docs/adr/*.md` | Architecture Decision Records | Sejarah keputusan teknis |
+
+### 4.2 Frontend (`frontend/`)
+
+| File/Dir | Purpose |
+|----------|---------|
+| `frontend/src/App.tsx` | Root component + routing setup |
+| `frontend/src/main.tsx` | React entry point |
+| `frontend/src/pages/Home.tsx` | Dashboard utama: summary + alert |
+| `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save |
+| `frontend/src/pages/Debts.tsx` | Status hutang + progress + tandai lunas |
+| `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat |
+| `frontend/src/pages/Settings.tsx` | Adjust budget + preferences |
+| `frontend/src/components/` | Reusable: PresetButton, CategoryPicker, ProgressBar, etc. |
+| `frontend/src/hooks/` | useApi, useTransactions, useDebts |
+| `frontend/src/lib/api.ts` | API client base |
+| `frontend/src/lib/format.ts` | Format Rupiah (Rp 50.000), tanggal |
+| `frontend/src/types/index.ts` | Shared TypeScript interfaces |
+| `frontend/public/manifest.json` | PWA config |
+| `frontend/public/sw.js` | Service worker for caching |
+
+### 4.3 Backend API (`api/`)
+
+| File/Dir | Purpose |
+|----------|---------|
+| `api/src/index.ts` | Worker entry + Hono app init + DO export |
+| `api/src/routes/transaction.ts` | CRUD /api/transactions |
+| `api/src/routes/debt.ts` | GET debts, POST pay |
+| `api/src/routes/report.ts` | GET daily/weekly report |
+| `api/src/routes/ocr.ts` | POST image → ocr.space → parsed result |
+| `api/src/routes/settings.ts` | GET/PUT settings |
+| `api/src/db/durable-object.ts` | DO class: SQLite init, query methods |
+| `api/src/db/schema.sql` | Table definitions |
+| `api/src/db/seed.sql` | Pre-loaded hutang data (5 platform) |
+| `api/src/services/transaction.ts` | Transaction business logic |
+| `api/src/services/debt.ts` | Debt payment + progress calculation |
+| `api/src/services/report.ts` | SQL aggregation for reports |
+| `api/src/services/budget.ts` | Budget checking, remaining calc |
+| `api/src/utils/format.ts` | Currency/date formatting |
+| `api/src/utils/response.ts` | Standard ApiResponse helper |
+| `api/wrangler.toml` | CF Worker config: DO bindings, vars, secrets |
 
 ---
 
-## Aturan Komunikasi
+## 5. Key Business Rules
 
-1. **Selalu kutip CONTEXT_TRIGGER** (`DRIVER-FM-7711`) di awal respons sebagai bukti sudah membaca file ini
-2. **Rujuk nomor fitur** (F001, F002, dst) saat diskusi fitur spesifik
-3. **Gunakan bahasa Indonesia** untuk komunikasi dengan user
-4. **Gunakan bahasa Inggris** untuk kode, commit message, dan dokumentasi teknis
-5. **Jangan asumsikan** - jika ada ambiguitas, tanya user
-6. **Konfirmasi pemahaman** sebelum eksekusi (Pre-flight Check)
+### 5.1 Transaksi
+- Semua `amount` dalam INTEGER Rupiah (no floating point)
+- Tipe: `income`, `expense`, `debt_payment`
+- `debt_payment` otomatis mengurangi `debts.total_remaining` dan update `debt_schedule.status`
+- Soft delete: set `is_deleted = 1`, never hard delete
 
----
+### 5.2 Hutang
+- 5 hutang pre-loaded dari studi kasus (per 12 Feb 2026)
+- Setiap hutang punya jadwal cicilan detail per bulan
+- "Tandai Lunas" = catat expense + update schedule status + update remaining
+- Denda dihitung berdasarkan tipe: `pct_monthly` (4-5%/bulan) atau `pct_daily` (0.25%/hari)
 
-## Workflow Standar (Build Loop)
+### 5.3 Budget
+- Default dari studi kasus (BBM 40k, Makan 25k, dll)
+- User bisa adjust via Settings
+- Dashboard menampilkan sisa budget harian = budget - pengeluaran hari ini
 
-1. **BRIEF** - User jelaskan task
-2. **PRE-FLIGHT** - AI restate pemahaman
-3. **CONFIRM** - User bilang "GO" / "Lanjut"
-4. **BUILD** - AI tulis kode
-5. **TEST** - User coba
-6. **DOCUMENT** - AI update docs
-
-**Penting:** Jangan skip langkah PRE-FLIGHT. 80% kesalahan bisa dicegah di tahap ini.
-
----
-
-## 💡 Tentang CONTEXT_TRIGGER
-
-**CONTEXT_TRIGGER** adalah inovasi kunci: string unik (`DRIVER-FM-7711`) yang harus dikutip AI di awal setiap respons, membuktikan bahwa AI benar-benar membaca file ini dan bukan "mengarang".
-
-**Cara verifikasi:**
-- ✅ AI mengutip `DRIVER-FM-7711` → AI sudah baca context
-- ❌ AI tidak mengutip → AI belum baca, minta baca ulang
+### 5.4 Target Lunas
+- Total hutang: Rp 8.851.200
+- Target: 13 April 2026 (2 bulan)
+- Butuh ~Rp 147.520/hari
+- Progress = (total_original - total_remaining) / total_original × 100%
 
 ---
 
-## Update History
+## 6. Current Status
 
-| Tanggal | Versi | Perubahan |
-|---------|-------|----------|
-| 2026-02-13 | CTX-v1.0 | Initial setup - Fase 0 |
+| Fase | Status |
+|------|--------|
+| Fase 0: Setup Repository | ✅ Done |
+| Fase 1: PRD | ✅ Done |
+| Fase 2: Constitution (Tech Stack) | ✅ Done |
+| Fase 3: AI-Context | ✅ Done |
+| Fase 4: Feature Specs | ⬜ TODO |
+| Fase 5: Space Instruction | ⬜ TODO |
+| Fase 6: Build Loop | ⬜ TODO |
 
 ---
 
-**Status:** ✅ Template ready - Akan diupdate di setiap fase development
+## 7. Development Workflow
+
+### Build Order (Recommended)
+
+1. **Setup project** — Vite React + Hono Workers + wrangler.toml + DO schema + seed
+2. **API: Transaction CRUD** — POST/GET/PUT/DELETE /api/transactions
+3. **API: Debts + Report** — GET /api/debts, GET /api/report/daily
+4. **Frontend: Home + QuickInput** — Dashboard + tap-based input
+5. **Frontend: Debts + Report** — Status hutang + laporan
+6. **OCR Integration** — POST /api/ocr → ocr.space
+7. **Settings + PWA** — Budget adjust + manifest.json + service worker
+8. **Deploy + Test** — Cloudflare Pages + Workers live
+
+### Per-Feature Branch Pattern
+
+```
+main ← feat/F001-quick-input ← feat/F002-ocr-upload ← ...
+```
+
+Setiap fitur: 1 branch → 1 PR → squash merge ke main.
+
+---
+
+## 8. Naming Conventions
+
+| Type | Convention | Example |
+|------|-----------|----------|
+| React components | PascalCase | `QuickInput.tsx`, `PresetButton.tsx` |
+| Hooks | camelCase with `use` prefix | `useApi.ts`, `useTransactions.ts` |
+| API routes | kebab-case | `/api/transactions`, `/api/debts` |
+| DB tables | snake_case | `debt_schedule`, `transactions` |
+| DB columns | snake_case | `created_at`, `total_remaining` |
+| TypeScript interfaces | PascalCase | `Transaction`, `Debt`, `ApiResponse` |
+| CSS classes | Tailwind utilities | `bg-green-500 text-white p-4` |
+| Files | kebab-case (backend), PascalCase (React) | `transaction.ts`, `Home.tsx` |
+| Git branches | `type/description` | `feat/F001-quick-input` |
+| Commits | `type: description` | `feat: add transaction CRUD API` |
+
+---
+
+## 9. External Services
+
+| Service | URL | Key Location | Free Tier |
+|---------|-----|-------------|------------|
+| ocr.space | `https://api.ocr.space/parse/image` | CF Worker Secret: `OCR_SPACE_API_KEY` | 500 req/hari |
+| Workers AI | Via `env.AI.run()` binding | Built-in (wrangler.toml) | 10k neurons/hari |
+| Telegram Bot API | `https://api.telegram.org` | Not used in MVP | N/A |
+| Google Maps API | `https://maps.googleapis.com` | Not used in MVP (future) | N/A |
+
+---
+
+## Document History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-02-13 | Initial template |
+| 2.0 | 2026-02-13 | Complete rewrite — dashboard PWA architecture |

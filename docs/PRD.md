@@ -1,431 +1,405 @@
 # 📋 Product Requirements Document (PRD)
-# Driver Financial Manager
+# Money Manager — Driver Ojol Financial Dashboard
 
-> Versi: 1.1 | Tanggal: 2026-02-13 | Status: Active
-
----
-
-## 1. Visi Produk
-
-**Driver Financial Manager** adalah aplikasi web manajemen keuangan yang membantu driver transportasi online (Gojek, Grab, taxi, dll) untuk mencatat dan mengelola keuangan operasional harian mereka sehingga memiliki visibilitas penuh terhadap profit bersih, dapat mengidentifikasi pola pengeluaran, dan membuat keputusan bisnis yang lebih baik untuk meningkatkan pendapatan.
-
-**Value Proposition:**
-- Pencatatan transaksi yang cepat dan sederhana (< 30 detik per transaksi)
-- Visibilitas real-time terhadap profit bersih harian
-- Analisis pengeluaran per kategori untuk identifikasi pemborosan
-- Data terstruktur untuk perencanaan keuangan jangka panjang
-
-**Problem Statement:**
-Driver transportasi online menghadapi kesulitan melacak profit bersih harian karena pencatatan manual yang tidak konsisten, pencampuran uang pribadi dengan operasional, dan ketidakmampuan menganalisis pola pengeluaran untuk optimasi.
+> **Version:** 2.0  
+> **Status:** Active  
+> **Last Updated:** 2026-02-13  
+> **Author:** AI-Assisted (Perplexity)  
 
 ---
 
-## 2. Target Pengguna
+## 1. Product Vision
 
-| Persona | Deskripsi | Kebutuhan Utama | Pain Point |
-|---------|-----------|-----------------|------------|
-| **Driver Solo Online** | Driver Gojek/Grab yang bekerja mandiri, usia 25-45 tahun, pendapatan Rp 3-7 juta/bulan | - Tracking profit bersih harian<br>- Monitoring efisiensi BBM<br>- Perencanaan target pendapatan | - Tidak tahu berapa profit sebenarnya setelah potong bensin & makan<br>- Uang operasional tercampur dengan uang pribadi<br>- Lupa mencatat pengeluaran kecil yang akumulatif besar |
-| **Driver Sewa Kendaraan** | Driver yang menyewa mobil/motor untuk ojol, harus bayar sewa harian/mingguan | - Tracking apakah profit > biaya sewa<br>- Monitoring konsistensi pendapatan<br>- Perhitungan ROI per hari kerja | - Tidak yakin apakah masih untung setelah bayar sewa<br>- Kesulitan memutuskan apakah lanjut sewa atau berhenti<br>- Tidak ada data untuk negosiasi harga sewa |
-| **Driver Koordinator Tim** | Driver yang koordinasi 2-5 driver lain dalam armada kecil | - Tracking pendapatan tim<br>- Perbandingan performa antar driver<br>- Pelaporan ke pemilik kendaraan | - Manual consolidate data dari banyak driver<br>- Tidak ada standar format pencatatan<br>- Kesulitan buat laporan mingguan/bulanan |
+### 1.1 Ringkasan
 
-**Primary Persona:** Driver Solo Online (70% target user)
+Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk seorang driver ojol yang ingin melunasi hutang multi-platform dalam waktu 2 bulan. Aplikasi ini mengutamakan **kecepatan input** (tap > ketik), **tracking hutang real-time**, dan **laporan harian otomatis**.
 
----
+### 1.2 Problem Statement
 
-## 3. Daftar Fitur (Prioritas MoSCoW)
+- Driver ojol dengan multi-hutang dari 5 platform pinjaman online (total Rp 8.851.200)
+- Penghasilan harian tidak tetap (Rp 120k - Rp 350k+)
+- Tidak punya tracking keuangan → tidak tahu posisi keuangan real-time
+- Jatuh tempo berbeda-beda (tgl 1, 5, 13, 15, 28) → sering telat bayar → kena denda
+- Butuh tool yang **cepat, tidak ribet, bisa dipakai sambil kerja**
 
-### MUST (MVP - Wajib ada di v1.0)
+### 1.3 Value Proposition
 
-| ID | Fitur | Deskripsi Lengkap | Acceptance Criteria |
-|----|-------|-------------------|---------------------|
-| **F001** | **Pencatatan Transaksi** | User dapat mencatat transaksi pemasukan (dari penumpang, bonus, insentif) dan pengeluaran (BBM, makan, parkir, dll) dengan jumlah, kategori, dan catatan opsional. Sistem menyimpan timestamp otomatis. | - Form input dengan field: jenis (pemasukan/pengeluaran), jumlah (numeric), kategori (dropdown), catatan (optional)<br>- Validasi: jumlah harus angka > 0<br>- Auto-save timestamp<br>- Feedback konfirmasi setelah save<br>- Data persisten setelah refresh |
-| **F002** | **Kategori Pengeluaran** | Sistem menyediakan kategori pengeluaran predefined: BBM, Makan/Minum, Parkir, Service/Maintenance, Cuci, Lain-lain. Setiap transaksi harus memilih kategori. Data dapat difilter dan dikelompokkan per kategori. | - Dropdown kategori saat input transaksi<br>- Kategori tidak bisa kosong untuk pengeluaran<br>- Sistem bisa group dan sum per kategori<br>- Tampilan breakdown per kategori di dashboard |
-| **F003** | **Laporan Harian** | Dashboard menampilkan ringkasan harian: total pemasukan, total pengeluaran, profit bersih, dan breakdown pengeluaran per kategori. User dapat switch tanggal untuk lihat history. | - Dashboard default tampilkan data hari ini<br>- Tampilkan: total pemasukan (hijau), total pengeluaran (merah), profit bersih (biru)<br>- Chart/bar sederhana untuk breakdown kategori<br>- Date picker untuk lihat tanggal lain<br>- Loading state < 2 detik |
+- Input transaksi **< 3 detik** (4 tap, 0 ketik)
+- Dashboard real-time: profit hari ini, sisa budget, progress hutang
+- Alert jatuh tempo otomatis
+- Upload struk/nota → OCR auto-extract
+- Semua gratis (Cloudflare free tier)
 
-### SHOULD (Nice to have - v1.1 atau v1.2)
+### 1.4 Target Lunas
 
-| ID | Fitur | Deskripsi Lengkap | Acceptance Criteria |
-|----|-------|-------------------|---------------------|
-| **F004** | **Grafik Trend Bulanan** | Visualisasi line chart untuk trend pendapatan, pengeluaran, dan profit dalam 30 hari terakhir. User dapat zoom in/out periode. | - Line chart dengan 3 lines: pemasukan, pengeluaran, profit<br>- X-axis: tanggal, Y-axis: rupiah<br>- Hover untuk detail per hari<br>- Export chart sebagai image |
-| **F006** | **Target Harian** | User dapat set target pendapatan harian (misal: Rp 300.000/hari). Dashboard menampilkan progress bar terhadap target. | - Setting untuk input target<br>- Progress bar visual (0-100%)<br>- Notifikasi jika target tercapai<br>- Historical: berapa hari target tercapai vs tidak |
-| **F007** | **Ringkasan Mingguan** | Summary otomatis untuk 7 hari terakhir: rata-rata profit/hari, total profit/minggu, kategori pengeluaran terbesar. | - Auto-generate setiap Minggu malam<br>- Tampilkan insight: "BBM kamu minggu ini 15% lebih tinggi dari minggu lalu"<br>- Archive ringkasan mingguan |
-
-### COULD (Future considerations - v2.0+)
-
-| ID | Fitur | Deskripsi Lengkap | Acceptance Criteria |
-|----|-------|-------------------|---------------------|
-| **F005** | **Export ke Excel** | User dapat download data transaksi dalam format .xlsx atau .csv untuk periode tertentu. | - Button "Export" dengan pilihan range tanggal<br>- Generate file dengan kolom: tanggal, jenis, kategori, jumlah, catatan<br>- Format currency untuk kolom jumlah |
-| **F008** | **Multi-User (Koordinator)** | Koordinator dapat manage data untuk 2-5 driver, switch view antar driver, dan lihat consolidated report. | - Role: Owner vs Driver<br>- Owner dapat add/remove driver<br>- Switch dropdown untuk pilih driver<br>- Consolidated view untuk semua driver |
-| **F009** | **Notifikasi Pengeluaran Tinggi** | Alert otomatis jika pengeluaran kategori tertentu melebihi threshold (misal: BBM > Rp 150k/hari). | - Setting threshold per kategori<br>- Push notification atau in-app banner<br>- History alert |
-
-### WON'T (Explicitly excluded)
-
-| ID | Fitur | Reason |
-|----|-------|--------|
-| **F-X01** | Integrasi Bank/E-wallet | Kompleksitas tinggi, perlu API partnership, privacy concern |
-| **F-X02** | Pembayaran/Top-up dalam App | Memerlukan payment gateway, licensing, compliance |
-| **F-X03** | Social/Community Features | Bukan focus utama, bisa distract dari core value |
-| **F-X04** | Pajak/Accounting Compliance | Butuh expertise legal/accounting yang di luar scope |
+- **Total hutang:** Rp 8.851.200
+- **Target lunas:** 13 April 2026 (2 bulan dari 13 Feb)
+- **Butuh:** ~Rp 147.520/hari dialokasikan untuk hutang
 
 ---
 
-## 4. NON-Goals (Batasan Scope)
+## 2. Studi Kasus (Data Nyata)
 
-1. **Aplikasi ini TIDAK akan mengelola pembayaran pajak atau aspek legal/compliance**
-   - Rationale: Memerlukan expertise hukum dan akan membuat aplikasi terlalu kompleks untuk MVP
+### 2.1 Profil User
 
-2. **Aplikasi ini TIDAK mendukung multi-currency atau transaksi internasional**
-   - Rationale: Target user adalah driver lokal Indonesia (IDR only)
+| Data | Nilai |
+|------|-------|
+| Pekerjaan | Driver ojol (ShopeeFood / SPX Express) |
+| Lokasi | Jakarta, Indonesia |
+| Status | Belum menikah |
+| Jam kerja | 8-12 jam/hari, ~26 hari/bulan |
+| Kendaraan | Motor (cicilan terpisah) |
 
-3. **Tidak ada fitur social/sharing/community di versi ini**
-   - Rationale: Focus pada utility tools, bukan social platform
+### 2.2 Profil Penghasilan
 
-4. **Tidak ada integrasi dengan bank/fintech untuk auto-tracking**
-   - Rationale: Kompleksitas API integration, privacy/security concern, tidak feasible untuk MVP
+| Metric | Nilai |
+|--------|-------|
+| Tipe | Harian, tidak tetap (variabel) |
+| Range harian | Rp 120.000 - Rp 350.000+ |
+| Rata-rata kotor | Rp 205.000/hari |
+| Rata-rata bersih | Rp 108.000/hari |
+| Sumber | Ongkir order + insentif/bonus |
+| Jumlah order | Rata-rata 13-14 order/hari |
 
-5. **Tidak ada fitur peminjaman/kredit/hutang antar driver**
-   - Rationale: Financial service memerlukan licensing dan regulatory compliance
+### 2.3 Pengeluaran Tetap Harian — Operasional
 
-6. **Tidak ada fitur offline-first atau sync di v1.0**
-   - Rationale: Menambah kompleksitas teknis, bisa di v2.0
+| Kategori | Default | Min | Max |
+|----------|---------|-----|-----|
+| ⛽ BBM | 40.000 | 25.000 | 60.000 |
+| 🍜 Makan & Minum | 25.000 | 10.000 | 40.000 |
+| 🚬 Rokok | 27.000 | 13.500 | 35.000 |
+| 📱 Data/Pulsa | 5.000 | 3.000 | 10.000 |
+| **TOTAL** | **97.000** | **51.500** | **145.000** |
 
-7. **Tidak ada mobile native app (iOS/Android) di v1.0**
-   - Rationale: Web responsive sudah cukup untuk MVP, native app untuk future
+### 2.4 Pengeluaran Tetap Harian — Rumah Tangga
 
-8. **Tidak ada fitur reminder/notification otomatis untuk catat transaksi**
-   - Rationale: Butuh permission management, bisa annoying, untuk future consideration
+| Kategori | Default/hari |
+|----------|--------------|
+| 🏠 Kebutuhan pokok rumah | 60.000 |
+| 💡 Listrik & air | 5.000 |
+| 🔧 Darurat/tak terduga | 10.000 |
+| **TOTAL** | **85.000** |
 
----
+### 2.5 Daftar Hutang (Per 12 Feb 2026)
 
-## 5. User Flow Utama
+#### Hutang 1: Shopee Pinjam
+- Sisa total: Rp 4.904.446 (termasuk bunga)
+- Cicilan/bulan: Rp 435.917
+- Jumlah cicilan: 10 kali (semua belum dibayar)
+- Jatuh tempo: Tanggal 13 setiap bulan
+- Denda keterlambatan: 5% per bulan dari cicilan
+- Jadwal: 13 Mar - 13 Des 2026
 
-### Flow 1: Onboarding Pertama Kali (First-time User)
+#### Hutang 2: SPayLater
+- Sisa total: Rp 672.194
+- Cicilan/bulan: ~Rp 162.845
+- Jumlah cicilan: 5 kali
+- Jatuh tempo: Tanggal 1 setiap bulan
+- Denda keterlambatan: 5% per bulan dari cicilan
+- Jadwal: 01 Mar - 01 Jul 2026
 
-1. User buka aplikasi pertama kali
-2. Sistem tampilkan landing page dengan:
-   - Penjelasan singkat: "Catat transaksi, lihat profit bersih"
-   - Button "Mulai Gratis"
-3. User klik "Mulai Gratis"
-4. Sistem redirect ke dashboard (untuk MVP: no auth, single user local storage)
-5. Sistem tampilkan tutorial overlay (skippable):
-   - "Klik + untuk tambah transaksi"
-   - "Lihat ringkasan harian di sini"
-6. User dapat langsung mulai input transaksi
+#### Hutang 3: SeaBank Pinjam
+- Sisa total: Rp 1.627.500
+- Cicilan/bulan: Rp 232.500 (tetap)
+- Jumlah cicilan: 7 kali
+- Jatuh tempo: Tanggal 5 setiap bulan
+- Denda keterlambatan: 0.25% per hari
+- Jadwal: 05 Mar - 05 Sep 2026
 
-**Exit criteria:** User berhasil masuk dashboard
+#### Hutang 4: Kredivo 1
+- Sisa total: Rp 1.006.050
+- Cicilan/bulan: Rp 335.350
+- Jumlah cicilan: 3 kali (6 sudah lunas)
+- Jatuh tempo: Tanggal 28 setiap bulan
+- Denda keterlambatan: 4% per bulan dari cicilan
+- Jadwal: 28 Feb - 28 Apr 2026
 
----
+#### Hutang 5: Kredivo 2
+- Sisa total: Rp 641.010
+- Cicilan/bulan: Rp 213.670
+- Jumlah cicilan: 3 kali (3 sudah lunas)
+- Jatuh tempo: Tanggal 15 setiap bulan
+- Denda keterlambatan: 4% per bulan dari cicilan
+- Jadwal: 15 Feb - 15 Apr 2026
 
-### Flow 2: Catat Transaksi Pemasukan
+#### Ringkasan Total Hutang
 
-**Pre-condition:** User sudah di dashboard
-
-1. User klik button "+ Tambah Transaksi" (floating action button)
-2. Sistem tampilkan modal/form dengan field:
-   - Radio button: ⚪ Pemasukan | ⚪ Pengeluaran (default: Pemasukan)
-   - Input jumlah: [Rp ______] (numeric keyboard on mobile)
-   - Dropdown kategori: [Penumpang | Bonus | Insentif | Lain-lain]
-   - Text area catatan: [Optional, max 100 char]
-   - Button: [Batal] [Simpan]
-3. User pilih "Pemasukan", input "500000", pilih kategori "Penumpang"
-4. User klik "Simpan"
-5. Sistem validasi:
-   - Jumlah harus numeric dan > 0 ✓
-   - Kategori tidak boleh kosong ✓
-6. Sistem simpan transaksi dengan timestamp otomatis
-7. Sistem tutup modal
-8. Sistem update dashboard:
-   - Total pemasukan hari ini +Rp 500.000
-   - Profit bersih +Rp 500.000
-   - Transaksi baru muncul di list
-9. Sistem tampilkan toast notification: "✅ Transaksi berhasil disimpan"
-
-**Success criteria:** Transaksi tersimpan dan dashboard terupdate
-
-**Error handling:**
-- Jika jumlah kosong atau 0: "⚠️ Jumlah harus diisi"
-- Jika jumlah bukan angka: "⚠️ Jumlah tidak valid. Masukkan angka."
-- Jika kategori kosong: "⚠️ Pilih kategori"
-- Jika gagal save (network/storage): "⚠️ Gagal menyimpan. Coba lagi."
-
----
-
-### Flow 3: Catat Transaksi Pengeluaran
-
-**Pre-condition:** User sudah di dashboard
-
-1. User klik "+ Tambah Transaksi"
-2. Sistem tampilkan form
-3. User pilih "Pengeluaran", input "50000", pilih kategori "BBM", catatan "Shell Sudirman"
-4. User klik "Simpan"
-5. Sistem validasi (sama seperti Flow 2)
-6. Sistem simpan dengan timestamp
-7. Sistem update dashboard:
-   - Total pengeluaran hari ini +Rp 50.000
-   - Profit bersih -Rp 50.000 (jika sebelumnya ada pemasukan)
-   - Breakdown kategori: BBM +Rp 50.000
-8. Toast notification: "✅ Pengeluaran tercatat"
-
-**Success criteria:** Pengeluaran tersimpan dan dashboard terupdate
+| Platform | Sisa Hutang | Cicilan/bulan | Jatuh Tempo |
+|----------|-------------|---------------|-------------|
+| Shopee Pinjam | Rp 4.904.446 | Rp 435.917 | Tgl 13 |
+| SPayLater | Rp 672.194 | ~Rp 162.845 | Tgl 1 |
+| SeaBank Pinjam | Rp 1.627.500 | Rp 232.500 | Tgl 5 |
+| Kredivo 1 | Rp 1.006.050 | Rp 335.350 | Tgl 28 |
+| Kredivo 2 | Rp 641.010 | Rp 213.670 | Tgl 15 |
+| **GRAND TOTAL** | **Rp 8.851.200** | | |
 
 ---
 
-### Flow 4: Lihat Laporan Harian
+## 3. User Persona
 
-**Pre-condition:** User sudah punya minimal 1 transaksi
+### Primary Persona: Driver Ojol Solo
 
-1. User buka dashboard (default view: hari ini)
-2. Sistem tampilkan ringkasan:
-   - **Pemasukan Hari Ini:** Rp 500.000 (hijau)
-   - **Pengeluaran Hari Ini:** Rp 150.000 (merah)
-   - **Profit Bersih:** Rp 350.000 (biru, bold)
-3. Sistem tampilkan breakdown pengeluaran per kategori:
-   - BBM: Rp 100.000 (67%)
-   - Makan: Rp 30.000 (20%)
-   - Parkir: Rp 20.000 (13%)
-4. Sistem tampilkan list transaksi (latest first):
-   - 18:30 | Pengeluaran | Parkir | -Rp 20.000
-   - 14:15 | Pengeluaran | Makan | -Rp 30.000
-   - 12:00 | Pemasukan | Penumpang | +Rp 200.000
-   - ...
-5. User dapat scroll untuk lihat semua transaksi hari ini
-
-**Success criteria:** User dapat melihat summary dan detail transaksi
+- **Nama:** Driver ShopeeFood Jakarta
+- **Usia:** 20-35 tahun
+- **Device:** Smartphone Android (mid-range)
+- **Koneksi:** 4G, kadang tidak stabil
+- **Waktu pakai app:** Saat istirahat, sambil nunggu order, malam hari
+- **Tech literacy:** Bisa pakai HP, familiar Telegram/WA/Shopee, bukan programmer
+- **Pain point utama:** Tidak tahu uang pergi ke mana, hutang menumpuk, bayar telat kena denda
+- **Kebutuhan:** Tool cepat, minim ketik, bisa dipakai 1 tangan sambil pegang HP
 
 ---
 
-### Flow 5: Lihat History Tanggal Lain
+## 4. Fitur
 
-**Pre-condition:** User di dashboard
+### 4.1 MVP (Build 4 Jam)
 
-1. User klik icon calendar atau tanggal di header
-2. Sistem tampilkan date picker (kalender)
-3. User pilih tanggal kemarin (misal: 12 Feb 2026)
-4. Sistem fetch data untuk tanggal yang dipilih
-5. Sistem update dashboard dengan data tanggal tersebut:
-   - Pemasukan: Rp 450.000
-   - Pengeluaran: Rp 180.000
-   - Profit: Rp 270.000
-   - List transaksi untuk tanggal tersebut
-6. User dapat klik "Hari Ini" untuk kembali ke tanggal sekarang
+#### MUST — Core Features
 
-**Success criteria:** User dapat navigate history dan lihat data tanggal lain
+| ID | Fitur | Deskripsi | AI? |
+|----|-------|-----------|-----|
+| F001 | Quick-Tap Input Transaksi | Tap MASUK/KELUAR → Tap kategori → Tap preset nominal → SIMPAN. 4 tap, 0 ketik, < 3 detik | Tidak |
+| F002 | Upload Struk OCR | Foto struk/nota → ocr.space extract text → tampilkan hasil → user konfirmasi | ocr.space |
+| F003 | Pre-loaded Data Hutang | 5 hutang + jadwal cicilan dari studi kasus, sudah tersedia saat app pertama kali dibuka | Tidak |
+| F004 | Home Dashboard | Ringkasan hari ini: pemasukan, pengeluaran, profit, sisa budget, alert jatuh tempo | Tidak |
+| F005 | Status Hutang | Daftar hutang + progress bar + jatuh tempo terdekat + tombol "Tandai Lunas" | Tidak |
+| F006 | Bayar Hutang (Tandai Lunas) | 1 tap → catat pengeluaran + update sisa hutang + update progress | Tidak |
+| F007 | Edit/Hapus Transaksi | Tap transaksi di riwayat → modal popup → ubah jumlah/kategori atau hapus | Tidak |
+| F008 | Laporan Harian | Breakdown pemasukan/pengeluaran per kategori + riwayat transaksi hari ini | Tidak |
 
----
+#### SHOULD — Polish Features
 
-## 6. Contoh Interaksi Detail
+| ID | Fitur | Deskripsi | AI? |
+|----|-------|-----------|-----|
+| F009 | Ringkasan Mingguan | Total minggu ini: pemasukan, pengeluaran, profit, pembayaran hutang | Tidak |
+| F010 | Adjust Budget | Setting budget per kategori (BBM, makan, rokok, dll) via tombol +/- | Tidak |
+| F011 | Help/Onboarding | Panduan singkat saat pertama kali buka app | Tidak |
 
-### F001: Pencatatan Transaksi - Happy Paths
+### 4.2 Future Features (Post-MVP)
 
-**Scenario 1: Catat pemasukan dari penumpang**
-- **Input:** Jenis=Pemasukan, Jumlah=500000, Kategori=Penumpang, Catatan="3 penumpang pagi"
-- **Output:** 
-  - ✅ "Transaksi berhasil disimpan"
-  - Dashboard update: Pemasukan +Rp 500.000, Profit +Rp 500.000
-  - List transaksi: Entry baru di paling atas dengan timestamp
+| ID | Fitur | Deskripsi |
+|----|-------|----------|
+| F-F01 | Google Maps Integration | Pin alamat pengirim-penerima per order |
+| F-F02 | Trip Tracking | Setiap input = data tracking lokasi, waktu, jarak, rute |
+| F-F03 | AI Learning | Analisis pola penghasilan, prediksi, optimasi rute, saran penghematan |
+| F-F04 | Grafik/Chart Visual | Chart pengeluaran per kategori, trend mingguan/bulanan |
+| F-F05 | Export CSV | Export data transaksi ke file CSV |
+| F-F06 | Notifikasi Proaktif | Push notification H-3 jatuh tempo via service worker |
+| F-F07 | Multi-period Report | Laporan bulanan, custom date range |
 
-**Scenario 2: Catat pengeluaran BBM**
-- **Input:** Jenis=Pengeluaran, Jumlah=100000, Kategori=BBM, Catatan="Pertamax 10L"
-- **Output:**
-  - ✅ "Pengeluaran tercatat"
-  - Dashboard update: Pengeluaran +Rp 100.000, Profit -Rp 100.000
-  - Breakdown kategori: BBM +Rp 100.000
+### 4.3 NON-Goals (Explicitly Excluded)
 
-**Scenario 3: Catat pengeluaran tanpa catatan**
-- **Input:** Jenis=Pengeluaran, Jumlah=20000, Kategori=Parkir, Catatan="" (kosong)
-- **Output:** ✅ Berhasil tersimpan (catatan optional)
-
-### F001: Pencatatan Transaksi - Error Cases
-
-**Error 1: Jumlah kosong**
-- **Input:** Jenis=Pemasukan, Jumlah="" (kosong), Kategori=Penumpang
-- **Output:** ⚠️ "Jumlah harus diisi" (field jumlah highlight merah)
-
-**Error 2: Jumlah invalid (huruf)**
-- **Input:** Jenis=Pemasukan, Jumlah="ABC", Kategori=Penumpang
-- **Output:** ⚠️ "Jumlah tidak valid. Masukkan angka."
-
-**Error 3: Jumlah negatif atau 0**
-- **Input:** Jenis=Pemasukan, Jumlah=-50000 atau 0
-- **Output:** ⚠️ "Jumlah harus lebih dari 0"
-
-**Error 4: Kategori tidak dipilih**
-- **Input:** Jenis=Pengeluaran, Jumlah=50000, Kategori="" (tidak pilih)
-- **Output:** ⚠️ "Pilih kategori pengeluaran"
-
-**Error 5: Gagal menyimpan (storage full/network error)**
-- **Input:** Valid input tapi storage penuh atau network error
-- **Output:** ⚠️ "Gagal menyimpan transaksi. Coba lagi."
-- **Action:** Data tidak tersimpan, user bisa retry
-
-### F003: Laporan Harian - Edge Cases
-
-**Edge Case 1: Hari ini belum ada transaksi**
-- **State:** User buka dashboard, tanggal hari ini, belum ada transaksi
-- **Output:**
-  - Pemasukan: Rp 0
-  - Pengeluaran: Rp 0
-  - Profit: Rp 0
-  - Empty state: "Belum ada transaksi hari ini. Klik + untuk mulai."
-
-**Edge Case 2: Tanggal history yang tidak ada data**
-- **State:** User pilih tanggal 1 minggu lalu yang tidak ada transaksi
-- **Output:** 
-  - Summary: semua Rp 0
-  - Empty state: "Tidak ada transaksi pada tanggal ini"
-
-**Edge Case 3: Pengeluaran lebih besar dari pemasukan (loss)**
-- **State:** Pemasukan=Rp 200.000, Pengeluaran=Rp 250.000
-- **Output:**
-  - Profit: -Rp 50.000 (merah, dengan icon warning)
-  - Optional: Hint "Pengeluaran kamu melebihi pemasukan hari ini"
+1. **Bukan multi-user** — ini personal app untuk 1 orang
+2. **Bukan SaaS** — tidak ada login, registrasi, atau user management
+3. **Bukan chat bot** — interface adalah dashboard visual, bukan conversational AI
+4. **Bukan integrasi API ojol** — tidak connect ke Grab/Gojek/Shopee API
+5. **Bukan payment gateway** — app tidak memproses pembayaran, hanya mencatat
+6. **Bukan budgeting advisor AI** — di MVP tidak ada saran AI otomatis
+7. **Bukan accounting software** — tidak ada neraca, jurnal, atau laporan pajak
+8. **Bukan mobile native app** — web PWA only, tidak publish ke Play Store
 
 ---
 
-## 7. Metrik Keberhasilan (Success Metrics)
+## 5. User Interface
 
-### Technical Metrics
+### 5.1 Prinsip Desain
 
-| Metric | Target | Measurement Method |
-|--------|--------|--------------------|
-| Page Load Time | < 2 detik | Google Lighthouse, Real User Monitoring |
-| Transaction Save Time | < 500ms | Performance API, backend logging |
-| Data Persistence | 100% | No data loss after refresh/reload |
-| Mobile Responsive | 100% compatibility | Test on iOS Safari, Android Chrome |
-| Input Validation Accuracy | 100% | All invalid inputs rejected, all valid inputs accepted |
+- **Tap > Ketik** — hampir semua input pakai tombol, preset, dan tap
+- **Mobile-first** — optimasi untuk HP Android mid-range, 1 tangan
+- **4 tap max** — setiap transaksi bisa dicatat dalam 4 tap atau kurang
+- **Informasi penting di atas** — dashboard summary selalu visible di home
+- **Emoji sebagai icon** — cepat dibaca, universal, zero asset
 
-### User Experience Metrics
+### 5.2 Layar Utama
 
-| Metric | Target | Measurement Method |
-|--------|--------|--------------------|
-| Steps to Record Transaction | ≤ 3 clicks | User flow analysis |
-| Time to Record Transaction | < 30 seconds | User testing |
-| Dashboard Info Clarity | User dapat menjawab "Berapa profit hari ini?" dalam < 5 detik | User testing |
+| # | Layar | Fungsi |
+|---|-------|--------|
+| 1 | **Home** | Dashboard ringkasan hari ini + alert jatuh tempo + navigasi |
+| 2 | **Quick Input** | Tap-based input transaksi (MASUK/KELUAR → kategori → nominal) |
+| 3 | **Upload Struk** | Foto/upload struk → OCR → konfirmasi |
+| 4 | **Status Hutang** | Daftar hutang + progress + tandai lunas |
+| 5 | **Laporan** | Harian/mingguan breakdown + riwayat transaksi |
+| 6 | **Settings** | Adjust budget, preset nominal, target tanggal lunas |
 
-### Business Metrics (Future, when have analytics)
+### 5.3 User Flow — Catat Pengeluaran (Happy Path)
 
-| Metric | Target | Measurement Method |
-|--------|--------|--------------------|
-| Daily Active Users | TBD | Analytics |
-| Transactions per User per Day | Average 10-20 | Database query |
-| User Retention (7-day) | > 40% | Cohort analysis |
-| Feature Usage (F001 vs F002 vs F003) | F001 100%, F002 80%, F003 60% | Event tracking |
+1. Buka app (tap icon PWA di home screen) → **Home** tampil
+2. Tap tombol **➕ Catat**
+3. Tap **💸 KELUAR**
+4. Tap kategori: **⛽ BBM**
+5. Tap preset nominal: **40k**
+6. Tap **✅ SIMPAN**
+7. Kembali ke **Home** → dashboard terupdate
 
----
+Total: **6 tap, 0 ketik, < 3 detik**
 
-## 8. Batasan & Asumsi
+### 5.4 User Flow — Upload Struk
 
-### Asumsi
+1. Dari layar Quick Input, tap **📷 Foto Struk**
+2. Ambil foto atau pilih dari galeri
+3. App kirim ke ocr.space → extract teks
+4. Tampilkan hasil: "⛽ Pertalite — Rp 40.000"
+5. User tap **✅ Benar** atau **✏️ Koreksi**
+6. Tersimpan
 
-1. **Device & Browser:**
-   - User memiliki smartphone dengan browser modern (Chrome 90+, Safari 14+)
-   - Screen size minimum: 360px width (common Android size)
-   - Internet connection tersedia (no offline mode di v1.0)
+### 5.5 User Flow — Bayar Cicilan
 
-2. **User Behavior:**
-   - User familiar dengan operasi dasar smartphone (tap, scroll, input text)
-   - User bersedia manual input transaksi (tidak expect auto-capture)
-   - User bekerja di Indonesia (currency: IDR, timezone: WIB)
+1. Buka **💳 Hutang**
+2. Lihat hutang terdekat: "Kredivo 2 — Rp 213.670 (15 Feb)"
+3. Tap **💳 Tandai Lunas**
+4. App otomatis: catat sebagai pengeluaran + update sisa hutang + update progress bar
+5. Konfirmasi: "✅ Kredivo 2 bulan ini LUNAS. Sisa: Rp 427.340"
 
-3. **Usage Pattern:**
-   - User rata-rata catat 10-20 transaksi per hari
-   - User akses aplikasi 2-5 kali per hari
-   - User butuh lihat summary harian, bukan real-time monitoring setiap menit
+### 5.6 User Flow — Cek Laporan Harian
 
-4. **Data Volume:**
-   - Maksimal 1000 transaksi per user per bulan (avg 33/hari)
-   - Data retention: minimal 3 bulan history
-   - Storage per user: < 5MB
-
-### Batasan
-
-1. **Technical Constraints:**
-   - Versi 1.0 hanya support single user (tidak ada multi-user/multi-device sync)
-   - Data disimpan lokal (localStorage atau cloud storage, TBD di CONSTITUTION)
-   - Tidak ada fitur offline-first di versi awal (butuh internet connection)
-   - Tidak ada real-time sync antar devices
-
-2. **Feature Constraints:**
-   - Kategori pengeluaran predefined (tidak bisa custom di v1.0)
-   - Tidak bisa edit/delete transaksi di v1.0 (hanya add)
-   - Laporan terbatas pada harian (tidak ada weekly/monthly view di MVP)
-   - Tidak ada fitur export/backup di v1.0
-
-3. **Security Constraints:**
-   - No authentication di v1.0 (public access, data di device)
-   - No encryption untuk data at rest
-   - No audit log untuk changes
-
-4. **Scalability Constraints:**
-   - MVP didesain untuk support max 100 concurrent users (jika deploy public)
-   - No CDN di v1.0
-   - No load balancing
-
-5. **Legal/Compliance Constraints:**
-   - Tidak ada privacy policy atau terms of service di v1.0 (karena no user data collection)
-   - Tidak ada GDPR compliance (karena no personal data stored in backend)
-   - Tidak ada financial advice atau tax guidance
+1. Tap **📊 Laporan** di Home
+2. Default: tampil laporan hari ini
+3. Lihat: pemasukan, pengeluaran per kategori, profit, sisa untuk hutang
+4. Scroll ke bawah: riwayat transaksi hari ini
+5. Tap transaksi → modal edit/hapus
 
 ---
 
-## 9. Dependencies & Risks
+## 6. Data Model
 
-### Technical Dependencies
+### 6.1 Tabel: debts (Pre-loaded)
 
-1. **Browser API:**
-   - localStorage untuk data persistence (fallback: sessionStorage)
-   - Date API untuk timestamp dan date picker
-   - Fetch API untuk future backend integration
+| Field | Type | Deskripsi |
+|-------|------|-----------|
+| id | TEXT PK | ID unik (shopee, spaylater, seabank, kredivo1, kredivo2) |
+| platform | TEXT | Nama platform |
+| total_original | INTEGER | Sisa hutang per 12 Feb 2026 |
+| total_remaining | INTEGER | Sisa hutang real-time |
+| monthly_installment | INTEGER | Cicilan per bulan |
+| due_day | INTEGER | Tanggal jatuh tempo (1-28) |
+| late_fee_type | TEXT | 'pct_monthly' atau 'pct_daily' |
+| late_fee_rate | REAL | Persentase denda |
 
-2. **External Libraries (TBD di CONSTITUTION):**
-   - Chart library untuk F004 (contoh: Chart.js, Recharts)
-   - Date picker library (contoh: react-datepicker)
-   - UI component library (optional)
+### 6.2 Tabel: debt_schedule (Pre-loaded)
 
-### Risk Analysis
+| Field | Type | Deskripsi |
+|-------|------|-----------|
+| id | TEXT PK | ID unik |
+| debt_id | TEXT FK | Reference ke debts |
+| due_date | TEXT | Tanggal jatuh tempo (ISO 8601) |
+| amount | INTEGER | Jumlah yang harus dibayar |
+| status | TEXT | 'unpaid', 'paid', 'late' |
+| paid_date | TEXT | Tanggal dibayar (nullable) |
+| paid_amount | INTEGER | Jumlah yang dibayar (nullable) |
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| **User tidak konsisten input transaksi** | High | High | - Buat UI se-simple mungkin (< 3 clicks)<br>- Future: reminder notification<br>- Edukasi value dari konsistensi tracking |
-| **Data loss karena clear browser** | Medium | High | - Warning saat first use: "Data disimpan di device"<br>- Future: cloud backup/export feature<br>- Provide export button sedini mungkin |
-| **User expect lebih banyak fitur dari MVP** | Medium | Medium | - Clear communication di landing: "Simple tool untuk tracking harian"<br>- Roadmap transparency |
-| **Performance issue dengan banyak data** | Low | Medium | - Pagination untuk list transaksi<br>- Lazy load untuk history<br>- Index untuk date-based query |
-| **Browser compatibility issue** | Low | High | - Test di top 3 browsers (Chrome, Safari, Firefox)<br>- Graceful degradation untuk old browsers |
-| **User privacy concern** | Low | Medium | - Transparansi: "Data disimpan di device kamu, tidak dikirim ke server"<br>- Future: option untuk cloud with encryption |
+### 6.3 Tabel: transactions (Runtime)
+
+| Field | Type | Deskripsi |
+|-------|------|-----------|
+| id | TEXT PK | UUID |
+| created_at | TEXT | Timestamp ISO 8601 |
+| type | TEXT | 'income', 'expense', 'debt_payment' |
+| amount | INTEGER | Nominal dalam Rupiah |
+| category | TEXT | Kode kategori |
+| note | TEXT | Catatan opsional |
+| source | TEXT | 'manual', 'ocr' |
+| debt_id | TEXT FK | Link ke debt jika debt_payment (nullable) |
+| is_deleted | INTEGER | Soft delete flag (0/1) |
+
+### 6.4 Tabel: settings (Runtime, adjustable)
+
+| Key | Default Value | Deskripsi |
+|-----|---------------|-----------|
+| budget_bbm | 40000 | Budget harian BBM |
+| budget_makan | 25000 | Budget harian makan |
+| budget_rokok | 27000 | Budget harian rokok |
+| budget_pulsa | 5000 | Budget harian pulsa |
+| budget_rt | 85000 | Budget harian rumah tangga |
+| debt_target_date | 2026-04-13 | Target tanggal lunas semua hutang |
+
+### 6.5 Kategori
+
+**Pemasukan:**
+- `order` — Pendapatan dari order
+- `bonus` — Bonus/insentif
+- `lainnya_masuk` — Pemasukan lain
+
+**Pengeluaran:**
+- `bbm` — Bensin/BBM
+- `makan` — Makan & minum
+- `rokok` — Rokok
+- `pulsa` — Data/pulsa
+- `parkir` — Parkir
+- `rt` — Kebutuhan rumah tangga
+- `service` — Service/maintenance motor
+- `lainnya_keluar` — Pengeluaran lain
 
 ---
 
-## 10. Out of Scope (Deferred to Future Versions)
+## 7. Technical Constraints
 
-### Deferred to v1.1-1.2
-- Edit/delete transaksi yang sudah ada
-- Custom kategori pengeluaran
-- Weekly/monthly summary view
-- Target setting dan progress tracking
-- Export ke Excel/CSV
+### 7.1 Cloudflare Free Tier Limits
 
-### Deferred to v2.0+
-- Multi-user support (koordinator + drivers)
-- Cloud sync multi-device
-- Authentication (email/phone login)
-- Notifikasi otomatis
-- Analisis prediktif ("Kamu biasanya habis Rp X untuk BBM per minggu")
-- Integration dengan app lain (Gojek API, dll)
+| Resource | Limit | Impact |
+|----------|-------|--------|
+| Workers requests | 100.000/hari | Sangat cukup untuk 1 user |
+| Workers CPU | 10ms/request | Business logic harus lean |
+| Workers AI neurons | 10.000/hari | Hemat, hanya untuk future AI features |
+| Durable Objects storage | 5GB | Sangat cukup untuk 1 user |
+| ocr.space API | 500 request/hari | Cukup untuk ~5-10 struk/hari |
 
-### Explicitly Not Planned
-- Mobile native app (iOS/Android native)
-- Desktop app (Electron)
-- Hardware integration (barcode scanner, receipt scanner)
-- Blockchain/cryptocurrency tracking
-- Social/community features
-- Gamification (badges, leaderboard)
-- AI-powered recommendation
+### 7.2 Performance Targets
+
+| Metric | Target |
+|--------|--------|
+| App load time (PWA cached) | < 1 detik |
+| Input transaksi (tap-to-save) | < 3 detik |
+| Dashboard refresh | < 500ms |
+| OCR processing | < 5 detik |
+| Bundle size (frontend) | < 200 KB gzipped |
+
+### 7.3 Build Constraint
+
+- **Total build time:** 4 jam
+- **Deploy target:** Cloudflare Pages (frontend) + Workers (API)
+- **Zero cost:** Semua dalam free tier
 
 ---
 
-**Document Control:**
-- **Created:** 2026-02-13
-- **Last Updated:** 2026-02-13
-- **Version:** 1.1
-- **Status:** Active - Ready for Fase 2 (Tech Stack Selection)
-- **Next Review:** After Fase 3 (before development starts)
+## 8. Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Transaksi per hari tercatat | > 5 transaksi |
+| Waktu input per transaksi | < 3 detik |
+| Akurasi OCR struk | > 80% (dengan koreksi manual) |
+| Hutang lunas sesuai target | 13 April 2026 |
+| Budget harian terpantau | Setiap hari ada ringkasan |
+| Jatuh tempo tidak terlewat | 0 denda baru setelah app aktif |
+
+---
+
+## 9. Assumptions & Risks
+
+### Assumptions
+
+1. User akan konsisten mencatat transaksi setiap hari
+2. User punya koneksi internet saat input (app butuh API call)
+3. Struk yang difoto cukup jelas untuk OCR
+4. Data hutang dari studi kasus akurat per 12 Feb 2026
+5. User mengakses app dari 1 device (HP utama)
+
+### Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| User lupa catat transaksi | Data tidak akurat | Alert di home jika belum ada input hari ini |
+| OCR gagal baca struk thermal pudar | Harus input manual | Fallback ke manual input, OCR opsional |
+| Cloudflare free tier berubah | App bisa down | Monitor CF changelog, data bisa di-export |
+| Workers CPU 10ms tidak cukup | Request timeout | Workers AI subrequest tidak hitung CPU, logic harus lean |
+| Target lunas 2 bulan tidak realistis secara matematis | User frustasi | Dashboard tetap tracking meskipun target meleset |
+
+---
+
+## Document History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-02-13 | Initial template (incorrect — web app generic) |
+| 1.1 | 2026-02-13 | Attempted completion (still incorrect) |
+| 2.0 | 2026-02-13 | Complete rewrite — dashboard PWA, studi kasus nyata, quick-tap UI |
