@@ -85,7 +85,7 @@ export function QuickInput() {
           onClick={handleBack}
           className="tap-highlight-none text-sm text-gray-500"
         >
-          ← {step === 1 ? 'Batal' : 'Kembali'}
+          ← {step === 1 ? 'Kembali' : 'Kembali'}
         </button>
         <StepIndicator current={step} />
       </div>
@@ -112,6 +112,19 @@ export function QuickInput() {
             >
               <span className="text-3xl">💸</span>
               <p className="mt-2 font-bold text-red-700">KELUAR</p>
+            </button>
+          </div>
+
+          {/* OCR shortcut */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => void navigate('/ocr')}
+              className="tap-highlight-none w-full rounded-2xl bg-purple-50 border-2 border-purple-200 p-4 text-center transition-all active:scale-95"
+            >
+              <span className="text-2xl">📷</span>
+              <p className="mt-1 text-sm font-bold text-purple-700">Foto Struk (OCR)</p>
+              <p className="text-xs text-purple-400">Upload struk, otomatis tercatat</p>
             </button>
           </div>
         </div>
@@ -157,7 +170,7 @@ export function QuickInput() {
             </div>
           )}
 
-          {/* Save button with double-tap protection */}
+          {/* Save button */}
           <button
             type="button"
             onClick={() => void handleSave()}
