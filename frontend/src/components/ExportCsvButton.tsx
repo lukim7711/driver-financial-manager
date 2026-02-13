@@ -42,8 +42,8 @@ export function ExportCsvButton({
     const res = await apiClient<DailyReportData>(
       `/api/report/daily?date=${date}`
     )
-    if (!res.success || !res.data) {
-      toast.error(res.error ?? 'Gagal export')
+    if (!res.success) {
+      toast.error(res.error)
       return
     }
     const txs = res.data.transactions
@@ -66,7 +66,7 @@ export function ExportCsvButton({
       const res = await apiClient<DailyReportData>(
         `/api/report/daily?date=${current}`
       )
-      if (res.success && res.data) {
+      if (res.success) {
         allTxs.push(...res.data.transactions)
       }
       current = addDays(current, 1)
