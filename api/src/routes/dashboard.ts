@@ -1,10 +1,7 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
 
 interface TodaySummary {
   income: number
@@ -66,26 +63,6 @@ interface DashboardData {
 
 const route = new Hono<{ Bindings: Bindings }>()
 
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
-
 function getUrgency(
   daysUntil: number
 ): UpcomingDue['urgency'] {
@@ -117,7 +94,6 @@ route.get('/', async (c) => {
 
     const db = getDB(c.env)
 
-    // 1. Today's transaction summary
     const txRows = await queryDB(db,
       `SELECT
         COALESCE(SUM(
@@ -148,7 +124,6 @@ route.get('/', async (c) => {
       transaction_count: txCount,
     }
 
-    // 2. Daily budget from daily_expenses table
     const dailyRows = await queryDB(db,
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM daily_expenses
@@ -157,7 +132,6 @@ route.get('/', async (c) => {
     const dailyBudgetTotal =
       Number(dailyRows[0]?.total) || 0
 
-    // 2b. Monthly expenses for DailyTarget only
     const monthlyRows = await queryDB(db,
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM monthly_expenses
@@ -170,7 +144,6 @@ route.get('/', async (c) => {
       ? Math.round(totalMonthly / daysInMonth)
       : 0
 
-    // Budget = daily only (NO prorate)
     const budgetRemaining = dailyBudgetTotal - expense
     const pctUsed = dailyBudgetTotal > 0
       ? Math.round(
@@ -186,7 +159,6 @@ route.get('/', async (c) => {
       percentage_used: pctUsed,
     }
 
-    // 3. Daily target (uses prorate here)
     const targetRows = await queryDB(db,
       `SELECT value FROM settings
        WHERE key = 'debt_target_date'`
@@ -242,7 +214,6 @@ route.get('/', async (c) => {
       target_date: targetDate,
     }
 
-    // 4. Upcoming dues
     const dueRows = await queryDB(db,
       `SELECT ds.debt_id, d.platform,
              ds.due_date, ds.amount

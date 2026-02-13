@@ -1,11 +1,6 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-  OCR_SPACE_API_KEY?: string
-}
+import type { Bindings } from '../utils/db'
 
 const route = new Hono<{ Bindings: Bindings }>()
 

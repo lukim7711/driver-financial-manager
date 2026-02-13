@@ -1,59 +1,11 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
+import { getNowISO, getTodayISO } from '../utils/date'
+import { generateId } from '../utils/id'
 
 const route = new Hono<{ Bindings: Bindings }>()
-
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(
-    new Request('http://do/query', {
-      method: 'POST',
-      body: JSON.stringify({ query: sql, params }),
-    })
-  )
-  const result = (await res.json()) as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
-
-function getTodayISO(): string {
-  const now = new Date()
-  const offset = 7 * 60
-  const local = new Date(
-    now.getTime() + offset * 60 * 1000
-  )
-  return local.toISOString().slice(0, 10)
-}
-
-function getNowISO(): string {
-  const now = new Date()
-  const offset = 7 * 60
-  const local = new Date(
-    now.getTime() + offset * 60 * 1000
-  )
-  const iso = local.toISOString().slice(0, 19)
-  return `${iso}+07:00`
-}
-
-function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 7)}`
-}
 
 interface ScheduleInput {
   due_date: string
@@ -191,7 +143,7 @@ route.get('/', async (c) => {
   }
 })
 
-// POST /api/debts — unified create (v4)
+// POST /api/debts
 route.post('/', async (c) => {
   try {
     const body = await c.req.json<{
@@ -212,19 +164,13 @@ route.post('/', async (c) => {
       body.platform.trim().length === 0
     ) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Nama wajib diisi',
-        },
+        { success: false, error: 'Nama wajib diisi' },
         400
       )
     }
     if (body.platform.trim().length > 50) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Nama max 50 karakter',
-        },
+        { success: false, error: 'Nama max 50 karakter' },
         400
       )
     }
@@ -234,10 +180,7 @@ route.post('/', async (c) => {
       body.total_original <= 0
     ) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Total hutang harus integer > 0',
-        },
+        { success: false, error: 'Total hutang harus integer > 0' },
         400
       )
     }
@@ -253,7 +196,6 @@ route.post('/', async (c) => {
         : 0
     const note = body.note?.trim() ?? ''
 
-    // Mode: record (catat saja, no schedules)
     if (body.debt_type === 'record') {
       const id = generateId('debt')
       const createdAt = getNowISO()
@@ -282,23 +224,16 @@ route.post('/', async (c) => {
       )
 
       return c.json<
-        ApiResponse<{
-          id: string
-          platform: string
-        }>
+        ApiResponse<{ id: string; platform: string }>
       >(
         {
           success: true,
-          data: {
-            id,
-            platform: body.platform.trim(),
-          },
+          data: { id, platform: body.platform.trim() },
         },
         201
       )
     }
 
-    // Mode: with schedules
     let scheduleItems: ScheduleInput[]
 
     if (
@@ -309,64 +244,40 @@ route.post('/', async (c) => {
       for (const s of body.schedules) {
         if (
           !s.due_date ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(
-            s.due_date
-          )
+          !/^\d{4}-\d{2}-\d{2}$/.test(s.due_date)
         ) {
           return c.json<ApiResponse<never>>(
-            {
-              success: false,
-              error:
-                'Setiap jadwal harus punya due_date (YYYY-MM-DD)',
-            },
+            { success: false, error: 'Setiap jadwal harus punya due_date (YYYY-MM-DD)' },
             400
           )
         }
-        if (
-          !Number.isInteger(s.amount) ||
-          s.amount <= 0
-        ) {
+        if (!Number.isInteger(s.amount) || s.amount <= 0) {
           return c.json<ApiResponse<never>>(
-            {
-              success: false,
-              error:
-                'Setiap jadwal harus punya amount > 0',
-            },
+            { success: false, error: 'Setiap jadwal harus punya amount > 0' },
             400
           )
         }
       }
 
       const sum = body.schedules.reduce(
-        (a, s) => a + s.amount,
-        0
+        (a, s) => a + s.amount, 0
       )
       if (sum !== body.total_original) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: `Total jadwal (${sum}) != total hutang (${body.total_original})`,
-          },
+          { success: false, error: `Total jadwal (${sum}) != total hutang (${body.total_original})` },
           400
         )
       }
       scheduleItems = body.schedules
     } else {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error:
-            'Sediakan schedules[] atau gunakan debt_type=record',
-        },
+        { success: false, error: 'Sediakan schedules[] atau gunakan debt_type=record' },
         400
       )
     }
 
     const firstDueDay = scheduleItems[0]
-      ? parseInt(
-          scheduleItems[0].due_date.slice(8, 10),
-          10
-        )
+      ? parseInt(scheduleItems[0].due_date.slice(8, 10), 10)
       : 1
     const monthlyEst =
       body.monthly_installment ??
@@ -413,28 +324,16 @@ route.post('/', async (c) => {
         `INSERT INTO debt_schedule
           (id, debt_id, due_date, amount, status)
          VALUES (?,?,?,?,?)`,
-        [
-          sid,
-          id,
-          s.due_date,
-          s.amount,
-          'unpaid',
-        ]
+        [sid, id, s.due_date, s.amount, 'unpaid']
       )
     }
 
     return c.json<
-      ApiResponse<{
-        id: string
-        platform: string
-      }>
+      ApiResponse<{ id: string; platform: string }>
     >(
       {
         success: true,
-        data: {
-          id,
-          platform: body.platform.trim(),
-        },
+        data: { id, platform: body.platform.trim() },
       },
       201
     )
@@ -472,16 +371,12 @@ route.put('/:id', async (c) => {
       db,
       `SELECT * FROM debts
        WHERE id = ?
-         AND (is_deleted = 0
-              OR is_deleted IS NULL)`,
+         AND (is_deleted = 0 OR is_deleted IS NULL)`,
       [id]
     )
     if (existing.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Hutang tidak ditemukan',
-        },
+        { success: false, error: 'Hutang tidak ditemukan' },
         404
       )
     }
@@ -492,10 +387,7 @@ route.put('/:id', async (c) => {
     if (body.platform !== undefined) {
       if (body.platform.trim().length === 0) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Nama wajib diisi',
-          },
+          { success: false, error: 'Nama wajib diisi' },
           400
         )
       }
@@ -508,22 +400,14 @@ route.put('/:id', async (c) => {
         body.total_original <= 0
       ) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Total harus integer > 0',
-          },
+          { success: false, error: 'Total harus integer > 0' },
           400
         )
       }
-      const oldOrig =
-        Number(existing[0]!.total_original) || 0
-      const oldRem =
-        Number(existing[0]!.total_remaining) || 0
+      const oldOrig = Number(existing[0]!.total_original) || 0
+      const oldRem = Number(existing[0]!.total_remaining) || 0
       const paidSoFar = oldOrig - oldRem
-      const newRem = Math.max(
-        body.total_original - paidSoFar,
-        0
-      )
+      const newRem = Math.max(body.total_original - paidSoFar, 0)
       updates.push('total_original = ?')
       params.push(body.total_original)
       updates.push('total_remaining = ?')
@@ -551,9 +435,7 @@ route.put('/:id', async (c) => {
     }
     if (body.late_fee_rate !== undefined) {
       updates.push('late_fee_rate = ?')
-      params.push(
-        Math.max(body.late_fee_rate, 0)
-      )
+      params.push(Math.max(body.late_fee_rate, 0))
     }
     if (body.note !== undefined) {
       updates.push('note = ?')
@@ -561,10 +443,7 @@ route.put('/:id', async (c) => {
     }
     if (updates.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Tidak ada field untuk diupdate',
-        },
+        { success: false, error: 'Tidak ada field untuk diupdate' },
         400
       )
     }
@@ -572,9 +451,7 @@ route.put('/:id', async (c) => {
     params.push(id)
     await queryDB(
       db,
-      `UPDATE debts
-       SET ${updates.join(', ')}
-       WHERE id = ?`,
+      `UPDATE debts SET ${updates.join(', ')} WHERE id = ?`,
       params
     )
 
@@ -596,10 +473,8 @@ route.put('/:id', async (c) => {
       data: {
         id: String(row!.id),
         platform: String(row!.platform),
-        total_original:
-          Number(row!.total_original) || 0,
-        total_remaining:
-          Number(row!.total_remaining) || 0,
+        total_original: Number(row!.total_original) || 0,
+        total_remaining: Number(row!.total_remaining) || 0,
       },
     })
   } catch (error) {
@@ -625,35 +500,26 @@ route.delete('/:id', async (c) => {
       db,
       `SELECT id FROM debts
        WHERE id = ?
-         AND (is_deleted = 0
-              OR is_deleted IS NULL)`,
+         AND (is_deleted = 0 OR is_deleted IS NULL)`,
       [id]
     )
     if (existing.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Hutang tidak ditemukan',
-        },
+        { success: false, error: 'Hutang tidak ditemukan' },
         404
       )
     }
     await queryDB(
       db,
-      `UPDATE debts
-       SET is_deleted = 1
-       WHERE id = ?`,
+      `UPDATE debts SET is_deleted = 1 WHERE id = ?`,
       [id]
     )
     await queryDB(
       db,
-      `DELETE FROM debt_schedule
-       WHERE debt_id = ?`,
+      `DELETE FROM debt_schedule WHERE debt_id = ?`,
       [id]
     )
-    return c.json<
-      ApiResponse<{ deleted: string }>
-    >({
+    return c.json<ApiResponse<{ deleted: string }>>({
       success: true,
       data: { deleted: id },
     })
@@ -686,16 +552,12 @@ route.put('/:id/schedules/:sid', async (c) => {
       db,
       `SELECT * FROM debts
        WHERE id = ?
-         AND (is_deleted = 0
-              OR is_deleted IS NULL)`,
+         AND (is_deleted = 0 OR is_deleted IS NULL)`,
       [debtId]
     )
     if (debtRows.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Hutang tidak ditemukan',
-        },
+        { success: false, error: 'Hutang tidak ditemukan' },
         404
       )
     }
@@ -707,38 +569,25 @@ route.put('/:id/schedules/:sid', async (c) => {
     )
     if (schedRows.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Jadwal tidak ditemukan',
-        },
+        { success: false, error: 'Jadwal tidak ditemukan' },
         404
       )
     }
     if (schedRows[0]!.status === 'paid') {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Tidak bisa edit yang sudah dibayar',
-        },
+        { success: false, error: 'Tidak bisa edit yang sudah dibayar' },
         400
       )
     }
 
     const updates: string[] = []
     const params: unknown[] = []
-    const oldAmount =
-      Number(schedRows[0]!.amount) || 0
+    const oldAmount = Number(schedRows[0]!.amount) || 0
 
     if (body.amount !== undefined) {
-      if (
-        !Number.isInteger(body.amount) ||
-        body.amount <= 0
-      ) {
+      if (!Number.isInteger(body.amount) || body.amount <= 0) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Nominal harus integer > 0',
-          },
+          { success: false, error: 'Nominal harus integer > 0' },
           400
         )
       }
@@ -746,16 +595,9 @@ route.put('/:id/schedules/:sid', async (c) => {
       params.push(body.amount)
     }
     if (body.due_date !== undefined) {
-      if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(
-          body.due_date
-        )
-      ) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.due_date)) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Format: YYYY-MM-DD',
-          },
+          { success: false, error: 'Format: YYYY-MM-DD' },
           400
         )
       }
@@ -764,10 +606,7 @@ route.put('/:id/schedules/:sid', async (c) => {
     }
     if (updates.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Tidak ada yang diupdate',
-        },
+        { success: false, error: 'Tidak ada yang diupdate' },
         400
       )
     }
@@ -775,9 +614,7 @@ route.put('/:id/schedules/:sid', async (c) => {
     params.push(sid)
     await queryDB(
       db,
-      `UPDATE debt_schedule
-       SET ${updates.join(', ')}
-       WHERE id = ?`,
+      `UPDATE debt_schedule SET ${updates.join(', ')} WHERE id = ?`,
       params
     )
 
@@ -786,20 +623,15 @@ route.put('/:id/schedules/:sid', async (c) => {
       await queryDB(
         db,
         `UPDATE debts
-         SET total_original =
-               total_original + ?,
-             total_remaining =
-               total_remaining + ?
+         SET total_original = total_original + ?,
+             total_remaining = total_remaining + ?
          WHERE id = ?`,
         [diff, diff, debtId]
       )
     }
 
     return c.json<
-      ApiResponse<{
-        schedule_id: string
-        updated: boolean
-      }>
+      ApiResponse<{ schedule_id: string; updated: boolean }>
     >({
       success: true,
       data: { schedule_id: sid, updated: true },
@@ -831,10 +663,7 @@ route.post('/:id/pay', async (c) => {
 
     if (!amount || amount <= 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'amount wajib > 0',
-        },
+        { success: false, error: 'amount wajib > 0' },
         400
       )
     }
@@ -844,36 +673,26 @@ route.post('/:id/pay', async (c) => {
       db,
       `SELECT * FROM debts
        WHERE id = ?
-         AND (is_deleted = 0
-              OR is_deleted IS NULL)`,
+         AND (is_deleted = 0 OR is_deleted IS NULL)`,
       [debtId]
     )
     if (debtRows.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Hutang tidak ditemukan',
-        },
+        { success: false, error: 'Hutang tidak ditemukan' },
         404
       )
     }
     const debt = debtRows[0]!
-    const isRecord =
-      String(debt.debt_type) === 'record'
+    const isRecord = String(debt.debt_type) === 'record'
     const today = getTodayISO()
     const createdAt = getNowISO()
     const txId = crypto.randomUUID()
 
-    // Record mode: no schedule, just reduce remaining
     if (isRecord || !body.schedule_id) {
-      const rem =
-        Number(debt.total_remaining) || 0
+      const rem = Number(debt.total_remaining) || 0
       if (amount > rem) {
         return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: `Maks: Rp ${rem.toLocaleString('id-ID')}`,
-          },
+          { success: false, error: `Maks: Rp ${rem.toLocaleString('id-ID')}` },
           400
         )
       }
@@ -885,19 +704,12 @@ route.post('/:id/pay', async (c) => {
            debt_id, is_deleted)
          VALUES (?,?,'debt_payment',?,
                  'debt',?,'manual',?,0)`,
-        [
-          txId,
-          createdAt,
-          amount,
-          `Bayar ${String(debt.platform)}`,
-          debtId,
-        ]
+        [txId, createdAt, amount, `Bayar ${String(debt.platform)}`, debtId]
       )
       await queryDB(
         db,
         `UPDATE debts
-         SET total_remaining =
-               total_remaining - ?
+         SET total_remaining = total_remaining - ?
          WHERE id = ?`,
         [amount, debtId]
       )
@@ -917,45 +729,32 @@ route.post('/:id/pay', async (c) => {
       )
     }
 
-    // Schedule mode
     const schedRows = await queryDB(
       db,
-      `SELECT * FROM debt_schedule
-       WHERE id = ?`,
+      `SELECT * FROM debt_schedule WHERE id = ?`,
       [body.schedule_id]
     )
     if (schedRows.length === 0) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Schedule tidak ditemukan',
-        },
+        { success: false, error: 'Schedule tidak ditemukan' },
         404
       )
     }
     const sched = schedRows[0]!
     if (sched.status === 'paid') {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Cicilan sudah lunas',
-        },
+        { success: false, error: 'Cicilan sudah lunas' },
         400
       )
     }
 
-    const schedAmount =
-      Number(sched.amount) || 0
-    const prevPaid =
-      Number(sched.paid_amount) || 0
+    const schedAmount = Number(sched.amount) || 0
+    const prevPaid = Number(sched.paid_amount) || 0
     const remaining = schedAmount - prevPaid
 
     if (amount > remaining) {
       return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: `Maks: Rp ${remaining.toLocaleString('id-ID')}`,
-        },
+        { success: false, error: `Maks: Rp ${remaining.toLocaleString('id-ID')}` },
         400
       )
     }
@@ -970,37 +769,22 @@ route.post('/:id/pay', async (c) => {
         (id, created_at, type, amount,
          category, note, source,
          debt_id, is_deleted)
-       VALUES
-        (?,?,'debt_payment',?,'debt',
-         ?,'manual',?,0)`,
-      [
-        txId,
-        createdAt,
-        amount,
-        `Bayar ${String(debt.platform)}`,
-        debtId,
-      ]
+       VALUES (?,?,'debt_payment',?,'debt',
+               ?,'manual',?,0)`,
+      [txId, createdAt, amount, `Bayar ${String(debt.platform)}`, debtId]
     )
     await queryDB(
       db,
       `UPDATE debt_schedule
-       SET status = ?, paid_date = ?,
-           paid_amount = ?
+       SET status = ?, paid_date = ?, paid_amount = ?
        WHERE id = ?`,
-      [
-        newStatus,
-        nowFull ? today : null,
-        newPaidAmount,
-        body.schedule_id,
-      ]
+      [newStatus, nowFull ? today : null, newPaidAmount, body.schedule_id]
     )
     await queryDB(
       db,
       `UPDATE debts
-       SET total_remaining =
-             total_remaining - ?,
-           paid_installments =
-             paid_installments + ?
+       SET total_remaining = total_remaining - ?,
+           paid_installments = paid_installments + ?
        WHERE id = ?`,
       [amount, nowFull ? 1 : 0, debtId]
     )

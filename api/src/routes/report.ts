@@ -1,32 +1,9 @@
 import { Hono } from 'hono'
 import type { ApiResponse } from '../types'
-
-type Bindings = {
-  DB: DurableObjectNamespace
-  ENVIRONMENT?: string
-}
+import type { Bindings } from '../utils/db'
+import { getDB, queryDB } from '../utils/db'
 
 const route = new Hono<{ Bindings: Bindings }>()
-
-function getDB(env: Bindings) {
-  const id = env.DB.idFromName('default')
-  return env.DB.get(id)
-}
-
-async function queryDB(
-  db: DurableObjectStub,
-  sql: string,
-  params: unknown[] = []
-) {
-  const res = await db.fetch(new Request('http://do/query', {
-    method: 'POST',
-    body: JSON.stringify({ query: sql, params }),
-  }))
-  const result = await res.json() as ApiResponse<
-    Record<string, unknown>[]
-  >
-  return result.data || []
-}
 
 interface CategoryMeta {
   emoji: string
@@ -222,7 +199,6 @@ route.get('/weekly', async (c) => {
     const weekStart = `${monday}T00:00:00+07:00`
     const weekEnd = `${sunday}T23:59:59+07:00`
 
-    // Current week transactions
     const rows = await queryDB(db,
       `SELECT * FROM transactions
        WHERE created_at >= ? AND created_at <= ?
@@ -231,7 +207,6 @@ route.get('/weekly', async (c) => {
       [weekStart, weekEnd]
     )
 
-    // Previous week for comparison
     const prevMonday = addDays(monday, -7)
     const prevSunday = addDays(prevMonday, 6)
     const prevStart = `${prevMonday}T00:00:00+07:00`
@@ -244,7 +219,6 @@ route.get('/weekly', async (c) => {
       [prevStart, prevEnd]
     )
 
-    // Build daily breakdown (Mon-Sun)
     const dailyMap = new Map<string, {
       income: number
       expense: number
@@ -267,7 +241,6 @@ route.get('/weekly', async (c) => {
     const incomeMap = new Map<
       string, { total: number; count: number }
     >()
-    let activeDays = 0
     const activeDaySet = new Set<string>()
 
     for (const r of rows) {
@@ -304,11 +277,10 @@ route.get('/weekly', async (c) => {
       }
     }
 
-    activeDays = activeDaySet.size || 1
+    const activeDays = activeDaySet.size || 1
     const totalProfit =
       totalIncome - totalExpense - totalDebt
 
-    // Daily breakdown array
     const daily = Array.from(dailyMap.entries()).map(
       ([d, v]) => {
         const dayDate = new Date(d)
@@ -324,7 +296,6 @@ route.get('/weekly', async (c) => {
       }
     )
 
-    // Top expense categories
     const topExpenses = Array.from(
       expenseMap.entries()
     )
@@ -346,7 +317,6 @@ route.get('/weekly', async (c) => {
         }
       })
 
-    // Income breakdown
     const incomeBreakdown = Array.from(
       incomeMap.entries()
     )
@@ -364,7 +334,6 @@ route.get('/weekly', async (c) => {
         }
       })
 
-    // Previous week totals
     let prevIncome = 0
     let prevExpense = 0
     let prevDebt = 0
