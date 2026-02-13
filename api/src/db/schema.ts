@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS debts (
   late_fee_type TEXT NOT NULL,
   late_fee_rate REAL NOT NULL,
   total_installments INTEGER NOT NULL,
-  paid_installments INTEGER NOT NULL DEFAULT 0
+  paid_installments INTEGER NOT NULL DEFAULT 0,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT
 );
 
 -- Table: debt_schedule
