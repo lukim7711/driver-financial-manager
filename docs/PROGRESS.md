@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 02:56 WIB
+> Last Updated: 2026-02-14 03:17 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F012 (CRUD Hutang)
+- **Fase:** Budget Harian CRUD + Fix Prorate
 - **Status:** ✅ MERGED
-- **PR:** [#10](https://github.com/lukim7711/driver-financial-manager/pull/10)
-- **Catatan:** Full CRUD hutang (tambah/edit/hapus) + 3 new components. CI pass, squash-merged.
+- **PR:** [#11](https://github.com/lukim7711/driver-financial-manager/pull/11)
+- **Catatan:** Budget harian jadi CRUD dinamis, pisahkan dari prorate bulanan di BudgetBar.
 
 ---
 
-## 🏆 STATUS: v1.3.0 — Debt CRUD
+## 🏆 STATUS: v1.3.1 — Budget Harian CRUD
 
 ### Infrastructure
 
@@ -45,7 +45,8 @@
 | DT001 | Daily Target (Target Harian Minimal) | ✅ DONE | main |
 | F014 | Edit Target Tanggal Lunas | ✅ DONE | main |
 | F013 | Biaya Bulanan Dinamis | ✅ DONE | [#9](https://github.com/lukim7711/driver-financial-manager/pull/9) |
-| F012 | CRUD Hutang (Tambah/Edit/Hapus) | ✅ MERGED | [#10](https://github.com/lukim7711/driver-financial-manager/pull/10) |
+| F012 | CRUD Hutang (Tambah/Edit/Hapus) | ✅ DONE | [#10](https://github.com/lukim7711/driver-financial-manager/pull/10) |
+| BDG-FIX | Budget Harian CRUD + Fix Prorate | ✅ DONE | [#11](https://github.com/lukim7711/driver-financial-manager/pull/11) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -68,7 +69,7 @@
 
 ---
 
-## API v1.3.0 — 16 Endpoints
+## API v1.3.1 — 20 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -83,6 +84,8 @@
 | `/api/settings` | GET, PUT | Settings + F014 |
 | `/api/monthly-expenses` | GET, POST | F013 |
 | `/api/monthly-expenses/:id` | PUT, DELETE | F013 |
+| `/api/daily-expenses` | GET, POST | BDG-FIX |
+| `/api/daily-expenses/:id` | PUT, DELETE | BDG-FIX |
 
 ---
 
@@ -101,10 +104,41 @@
 | Target date hardcode | ✅ FIXED | F014 — editable di Settings |
 | Biaya bulanan hardcode | ✅ FIXED | F013 — CRUD biaya bulanan di Settings |
 | Hutang tidak bisa CRUD | ✅ FIXED | F012 — POST/PUT/DELETE /api/debts |
+| Budget harian beda Home vs Settings | ✅ FIXED | Prorate dihapus dari BudgetBar, budget harian jadi CRUD |
+| Budget harian hardcode 4 item | ✅ FIXED | Tabel daily_expenses + CRUD /api/daily-expenses |
 
 ---
 
 ## Session Log
+
+### Session 16 — 2026-02-14 03:07–03:17 WIB
+
+**Fase:** Budget Harian CRUD + Fix Prorate
+
+**Problem:** Budget harian di Home (Sisa Budget: dari Rp 115.571) berbeda dengan Settings (Total Harian: Rp 87.000) karena prorate biaya bulanan ditambahkan ke budget harian di BudgetBar.
+
+**Backend:**
+- ✅ New table: `daily_expenses` (id, name, emoji, amount, is_deleted, created_at)
+- ✅ Migration: `budget_bbm/makan/rokok/pulsa` dari `settings` → `daily_expenses` rows
+- ✅ New route: CRUD `/api/daily-expenses` (GET, POST, PUT, DELETE)
+- ✅ Dashboard: `budget.daily_total` = SUM(daily_expenses) saja (NO prorate)
+- ✅ Dashboard: field renamed `daily_expense` → `daily_total`
+- ✅ Debt query: added `WHERE is_deleted = 0` filter
+
+**Frontend:**
+- ✅ Settings.tsx: Complete rewrite — Budget Harian jadi CRUD dinamis
+- ✅ Settings.tsx: Shared `renderExpenseItem` + `renderAddForm` helpers (DRY)
+- ✅ Settings.tsx: Target date save terpisah (inline button)
+- ✅ Home.tsx: BudgetBar pakai `budget.daily_total` langsung (tanpa prorate)
+- ✅ BudgetBar.tsx: Label "Sisa Budget" → "Sisa Budget Harian"
+- ✅ Types: `DailyExpense` interface
+
+**Design Decision:**
+- BudgetBar = batas max pengeluaran harian (user control)
+- DailyTarget = target income minimum (include prorate + hutang)
+- Keduanya punya fungsi berbeda, tidak boleh dicampur
+
+**Result:** CI ✅ PASS → Squash-merged ([#11](https://github.com/lukim7711/driver-financial-manager/pull/11))
 
 ### Session 15 — 2026-02-14 02:48–02:56 WIB
 
@@ -127,35 +161,11 @@
 - ✅ `DebtCard.tsx` — Added ✏️ edit + 🗑️ delete buttons in expanded view
 - ✅ `Debts.tsx` — FAB (+) button, empty state, CRUD state/handlers, render dialogs
 
-**Docs:**
-- ✅ `docs/features/F012-crud-hutang.md` (NEW) — Full feature spec
-
 **Result:** CI ✅ PASS → Squash-merged ([#10](https://github.com/lukim7711/driver-financial-manager/pull/10))
 
 ### Session 14 — 2026-02-14 02:13–02:35 WIB
 
 **Fase:** F013 (Biaya Bulanan Dinamis)
-
-**Backend:**
-- ✅ Tabel `monthly_expenses` — id, name, emoji, amount, is_deleted, created_at
-- ✅ Seed default: 🏠 RT/Rumah Tangga Rp 75.000
-- ✅ Migration: `budget_rt` dari `settings` otomatis dipindah ke tabel baru
-- ✅ CRUD endpoints: GET, POST, PUT, DELETE `/api/monthly-expenses`
-- ✅ Dashboard: Query `monthly_expenses` → `SUM(amount)` → `prorated_monthly`
-- ✅ Settings: **Hapus** `budget_rt` dari budget keys
-
-**Frontend:**
-- ✅ Settings: Section Budget Bulanan jadi dinamis — list + CRUD
-- ✅ Tambah item: Modal form dengan nama, emoji picker (pre-defined list), nominal
-- ✅ Edit inline: Tiap field bisa di-edit langsung
-- ✅ Hapus item: Tombol 🗑️ → confirm → soft delete
-- ✅ Total bulanan: Sum semua item, tampil di bawah list
-- ✅ DailyTarget: `prorated_rt` → `prorated_monthly`
-- ✅ Home: Update dashboard interfaces
-
-**CI Fix:**
-- ✅ TS2339: Narrowed discriminated union di Settings.tsx (3 lokasi)
-- ✅ TS18048: Null-check `rows[0]` di monthly-expense.ts PUT handler
 
 **Result:** CI ✅ PASS → Squash-merged ([#9](https://github.com/lukim7711/driver-financial-manager/pull/9))
 
@@ -163,76 +173,38 @@
 
 **Fase:** F014 (Edit Target Tanggal) + CI/CD fix
 
-**F014 — Edit Target Tanggal Lunas:**
-- ✅ Backend: `settings.ts` — GET/PUT sekarang support `debt_target_date` field
-- ✅ Validasi: format YYYY-MM-DD + cek tanggal valid
-- ✅ Frontend: `Settings.tsx` — Section "Target Lunas Hutang" dengan date picker
-- ✅ Tampilkan hari tersisa + format tanggal Bahasa Indonesia
-- ✅ Dashboard otomatis baca dari DB (sudah support dari DT001)
-
-**CI/CD Pipeline Fix:**
-- ✅ `deploy.yml` — Changed trigger dari `on: push` ke `on: workflow_run`
-- ✅ CD hanya jalan jika CI conclusion == 'success'
-- ✅ `workflow_dispatch` tetap tersedia untuk manual deploy
-
-**CI Fix:**
-- ✅ TS6133: Removed unused `navigate` import di Home.tsx
-- ✅ TS2339: Narrowed discriminated union sebelum akses `.error` di Settings.tsx
-
 ### Session 12 — 2026-02-14 00:23–01:26 WIB
 
 **Fase:** Post-launch hotfixes + Daily Target
 
-**Bug fixes:**
-- ✅ Missing income categories (Tips, Insentif)
-- ✅ Emoji escape bug di Settings.tsx
-- ✅ CD pipeline cache error (package-lock.json not in repo)
-- ✅ OCR `E201: language invalid` — `ind` → `eng`
-- ✅ OCR no entry point — added button in QuickInput
-
-**New feature: Daily Target (DT001)**
-- ✅ Backend: `dashboard.ts` — `daily_target` field with formula
-- ✅ Frontend: `DailyTarget.tsx` component
-- ✅ Home.tsx — integrated DailyTarget
-- ✅ Removed CTA button (redundant with BottomNav)
-- ✅ RT prorate: ÷ 30 → ÷ actual days in current month
-- ✅ Hide RT breakdown row when value is 0
-
 ### Session 11 — 2026-02-13 23:27 WIB
 
-**Fase:** Fase 11 — Settings + PWA + Deploy
-- ✅ Settings page, PWA, CD pipeline
-- **CI:** ✅ PASS → Merged ([#8](https://github.com/lukim7711/driver-financial-manager/pull/8))
+**Fase:** Settings + PWA + Deploy → Merged ([#8](https://github.com/lukim7711/driver-financial-manager/pull/8))
 
 ### Session 10 — 2026-02-13 23:17 WIB
 
-**Fase:** Build F002 (Upload Struk OCR)
-- **CI:** ✅ PASS → Merged ([#7](https://github.com/lukim7711/driver-financial-manager/pull/7))
+**Fase:** F002 (Upload Struk OCR) → Merged ([#7](https://github.com/lukim7711/driver-financial-manager/pull/7))
 
 ### Session 9 — 2026-02-13 23:11 WIB
 
-**Fase:** Build F007+F008 (Laporan Harian + Edit/Delete)
-- **CI:** ✅ PASS → Merged ([#6](https://github.com/lukim7711/driver-financial-manager/pull/6))
+**Fase:** F007+F008 → Merged ([#6](https://github.com/lukim7711/driver-financial-manager/pull/6))
 
 ### Session 8 — 2026-02-13 23:03 WIB
 
-**Fase:** Build F005+F006 (Status Hutang + Bayar Cicilan)
-- **CI:** ✅ PASS → Merged ([#5](https://github.com/lukim7711/driver-financial-manager/pull/5))
+**Fase:** F005+F006 → Merged ([#5](https://github.com/lukim7711/driver-financial-manager/pull/5))
 
 ### Session 7 — 2026-02-13 22:57 WIB
 
-**Fase:** Build F004 Home Dashboard
-- **CI:** ✅ PASS → Merged ([#4](https://github.com/lukim7711/driver-financial-manager/pull/4))
+**Fase:** F004 → Merged ([#4](https://github.com/lukim7711/driver-financial-manager/pull/4))
 
 ### Session 6 — 2026-02-13 22:48 WIB
 
-**Fase:** Build F001 Quick-Tap Input
-- **CI:** ✅ PASS → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
+**Fase:** F001 → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
 
 ---
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 02:56 WIB
-- **Total Sessions:** 15
-- **Current Phase:** v1.3.0 — F012 CRUD Hutang (SHIPPED)
+- **Last Updated:** 2026-02-14 03:17 WIB
+- **Total Sessions:** 16
+- **Current Phase:** v1.3.1 — Budget Harian CRUD (SHIPPED)
