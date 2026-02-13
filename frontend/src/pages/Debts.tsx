@@ -4,6 +4,9 @@ import { formatRupiah } from '../lib/format'
 import { DebtCard } from '../components/DebtCard'
 import { PayDialog } from '../components/PayDialog'
 import { PaySuccess } from '../components/PaySuccess'
+import { AddDebtForm } from '../components/AddDebtForm'
+import { EditDebtDialog } from '../components/EditDebtDialog'
+import { DeleteDebtDialog } from '../components/DeleteDebtDialog'
 import { BottomNav } from '../components/BottomNav'
 
 interface Schedule {
@@ -52,8 +55,21 @@ interface PayResult {
 export function Debts() {
   const [data, setData] = useState<DebtData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [payTarget, setPayTarget] = useState<{ debt: Debt; schedule: Schedule } | null>(null)
-  const [payResult, setPayResult] = useState<PayResult | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [payTarget, setPayTarget] = useState<{
+    debt: Debt
+    schedule: Schedule
+  } | null>(null)
+  const [payResult, setPayResult] = useState<PayResult | null>(
+    null
+  )
+  const [showAdd, setShowAdd] = useState(false)
+  const [editTarget, setEditTarget] = useState<Debt | null>(
+    null
+  )
+  const [deleteTarget, setDeleteTarget] = useState<Debt | null>(
+    null
+  )
 
   const fetchDebts = useCallback(async () => {
     const res = await apiClient<DebtData>('/api/debts')
@@ -61,7 +77,9 @@ export function Debts() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { void fetchDebts() }, [fetchDebts])
+  useEffect(() => {
+    void fetchDebts()
+  }, [fetchDebts])
 
   const handlePay = (debt: Debt) => {
     const sched = debt.next_schedule
@@ -69,17 +87,23 @@ export function Debts() {
     setPayTarget({ debt, schedule: sched })
   }
 
-  const handlePayConfirm = async (amount: number, isFull: boolean) => {
+  const handlePayConfirm = async (
+    amount: number,
+    isFull: boolean
+  ) => {
     if (!payTarget) return
     const { debt, schedule } = payTarget
-    const res = await apiClient<PayResult>(`/api/debts/${debt.id}/pay`, {
-      method: 'POST',
-      body: JSON.stringify({
-        schedule_id: schedule.id,
-        amount,
-        is_full_payment: isFull,
-      }),
-    })
+    const res = await apiClient<PayResult>(
+      `/api/debts/${debt.id}/pay`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          schedule_id: schedule.id,
+          amount,
+          is_full_payment: isFull,
+        }),
+      }
+    )
     if (res.success && res.data) {
       setPayTarget(null)
       setPayResult(res.data)
@@ -92,6 +116,68 @@ export function Debts() {
     void fetchDebts()
   }
 
+  const handleAddSubmit = async (formData: {
+    platform: string
+    total_original: number
+    monthly_installment: number
+    due_day: number
+    total_installments: number
+    late_fee_type: string
+    late_fee_rate: number
+  }) => {
+    setSaving(true)
+    const res = await apiClient<{ id: string }>(
+      '/api/debts',
+      {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      }
+    )
+    setSaving(false)
+    if (res.success) {
+      setShowAdd(false)
+      void fetchDebts()
+    }
+  }
+
+  const handleEditSubmit = async (updates: {
+    platform?: string
+    total_original?: number
+    monthly_installment?: number
+    due_day?: number
+    late_fee_type?: string
+    late_fee_rate?: number
+  }) => {
+    if (!editTarget) return
+    setSaving(true)
+    const res = await apiClient<unknown>(
+      `/api/debts/${editTarget.id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }
+    )
+    setSaving(false)
+    if (res.success) {
+      setEditTarget(null)
+      void fetchDebts()
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setSaving(true)
+    const res = await apiClient<unknown>(
+      `/api/debts/${deleteTarget.id}`,
+      { method: 'DELETE' }
+    )
+    setSaving(false)
+    if (res.success) {
+      setDeleteTarget(null)
+      void fetchDebts()
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -101,27 +187,45 @@ export function Debts() {
   }
 
   if (payResult) {
-    return <PaySuccess result={payResult} onDone={handleSuccessDone} />
+    return (
+      <PaySuccess
+        result={payResult}
+        onDone={handleSuccessDone}
+      />
+    )
   }
 
-  const summary = data?.summary ?? { total_original: 0, total_remaining: 0, total_paid: 0, progress_percentage: 0 }
+  const summary = data?.summary ?? {
+    total_original: 0,
+    total_remaining: 0,
+    total_paid: 0,
+    progress_percentage: 0,
+  }
   const debts = data?.debts ?? []
-  const allPaid = summary.total_remaining <= 0 && summary.total_paid > 0
+  const allPaid =
+    summary.total_remaining <= 0 && summary.total_paid > 0
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-blue-600 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">💳 Status Hutang</h1>
-        <p className="mt-2 text-2xl font-bold">{formatRupiah(summary.total_remaining)}</p>
+        <h1 className="text-lg font-bold">
+          💳 Status Hutang
+        </h1>
+        <p className="mt-2 text-2xl font-bold">
+          {formatRupiah(summary.total_remaining)}
+        </p>
         <div className="mt-2 h-3 rounded-full bg-blue-800 overflow-hidden">
           <div
             className="h-full rounded-full bg-emerald-400 transition-all duration-500"
-            style={{ width: `${Math.min(summary.progress_percentage, 100)}%` }}
+            style={{
+              width: `${Math.min(summary.progress_percentage, 100)}%`,
+            }}
           />
         </div>
         <p className="mt-1 text-xs text-blue-200">
-          {summary.progress_percentage}% lunas • {formatRupiah(summary.total_paid)} terbayar
+          {summary.progress_percentage}% lunas •{' '}
+          {formatRupiah(summary.total_paid)} terbayar
         </p>
       </div>
 
@@ -129,14 +233,69 @@ export function Debts() {
         {allPaid && (
           <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-6 text-center">
             <p className="text-3xl">🎉</p>
-            <p className="mt-2 text-lg font-bold text-emerald-700">Semua Hutang LUNAS!</p>
+            <p className="mt-2 text-lg font-bold text-emerald-700">
+              Semua Hutang LUNAS!
+            </p>
           </div>
         )}
 
         {debts.map((debt) => (
-          <DebtCard key={debt.id} debt={debt} onPay={() => handlePay(debt)} />
+          <DebtCard
+            key={debt.id}
+            debt={debt}
+            onPay={() => handlePay(debt)}
+            onEdit={() => setEditTarget(debt)}
+            onDelete={() => setDeleteTarget(debt)}
+          />
         ))}
+
+        {debts.length === 0 && !allPaid && (
+          <div className="rounded-2xl bg-gray-100 p-6 text-center">
+            <p className="text-3xl">💭</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Belum ada hutang. Tap + untuk menambah.
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* FAB: Add new debt */}
+      <button
+        type="button"
+        onClick={() => setShowAdd(true)}
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg transition-all active:scale-90"
+        aria-label="Tambah Hutang"
+      >
+        +
+      </button>
+
+      {/* Dialogs */}
+      {showAdd && (
+        <AddDebtForm
+          onSubmit={handleAddSubmit}
+          onCancel={() => setShowAdd(false)}
+          loading={saving}
+        />
+      )}
+
+      {editTarget && (
+        <EditDebtDialog
+          debt={editTarget}
+          onSubmit={handleEditSubmit}
+          onCancel={() => setEditTarget(null)}
+          loading={saving}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteDebtDialog
+          platform={deleteTarget.platform}
+          totalRemaining={deleteTarget.total_remaining}
+          onConfirm={() => void handleDeleteConfirm()}
+          onCancel={() => setDeleteTarget(null)}
+          loading={saving}
+        />
+      )}
 
       {payTarget && (
         <PayDialog
