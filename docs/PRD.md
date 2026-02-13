@@ -1,7 +1,7 @@
 # 📋 Product Requirements Document (PRD)
 # Money Manager — Driver Ojol Financial Dashboard
 
-> **Version:** 2.0  
+> **Version:** 2.1  
 > **Status:** Active  
 > **Last Updated:** 2026-02-13  
 > **Author:** AI-Assisted (Perplexity)  
@@ -16,7 +16,7 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 
 ### 1.2 Problem Statement
 
-- Driver ojol dengan multi-hutang dari 5 platform pinjaman online (total Rp 8.851.200)
+- Driver ojol dengan multi-hutang dari 5 platform pinjaman online (total Rp 8.285.119)
 - Penghasilan harian tidak tetap (Rp 120k - Rp 350k+)
 - Tidak punya tracking keuangan → tidak tahu posisi keuangan real-time
 - Jatuh tempo berbeda-beda (tgl 1, 5, 13, 15, 28) → sering telat bayar → kena denda
@@ -32,9 +32,9 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 
 ### 1.4 Target Lunas
 
-- **Total hutang:** Rp 8.851.200
+- **Total hutang:** Rp 8.285.119
 - **Target lunas:** 13 April 2026 (2 bulan dari 13 Feb)
-- **Butuh:** ~Rp 147.520/hari dialokasikan untuk hutang
+- **Butuh:** ~Rp 138.085/hari dialokasikan untuk hutang
 
 ---
 
@@ -78,12 +78,12 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 | 🏠 Kebutuhan pokok rumah | 60.000 |
 | 💡 Listrik & air | 5.000 |
 | 🔧 Darurat/tak terduga | 10.000 |
-| **TOTAL** | **85.000** |
+| **TOTAL** | **75.000** |
 
 ### 2.5 Daftar Hutang (Per 12 Feb 2026)
 
 #### Hutang 1: Shopee Pinjam
-- Sisa total: Rp 4.904.446 (termasuk bunga)
+- Sisa total: Rp 4.359.170 (10 × Rp 435.917)
 - Cicilan/bulan: Rp 435.917
 - Jumlah cicilan: 10 kali (semua belum dibayar)
 - Jatuh tempo: Tanggal 13 setiap bulan
@@ -91,8 +91,8 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 - Jadwal: 13 Mar - 13 Des 2026
 
 #### Hutang 2: SPayLater
-- Sisa total: Rp 672.194
-- Cicilan/bulan: ~Rp 162.845
+- Sisa total: Rp 651.389 (4 × Rp 162.845 + Rp 9)
+- Cicilan/bulan: Rp 162.845 (4 bulan pertama), Rp 9 (bulan terakhir)
 - Jumlah cicilan: 5 kali
 - Jatuh tempo: Tanggal 1 setiap bulan
 - Denda keterlambatan: 5% per bulan dari cicilan
@@ -126,12 +126,12 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 
 | Platform | Sisa Hutang | Cicilan/bulan | Jatuh Tempo |
 |----------|-------------|---------------|-------------|
-| Shopee Pinjam | Rp 4.904.446 | Rp 435.917 | Tgl 13 |
-| SPayLater | Rp 672.194 | ~Rp 162.845 | Tgl 1 |
+| Shopee Pinjam | Rp 4.359.170 | Rp 435.917 | Tgl 13 |
+| SPayLater | Rp 651.389 | ~Rp 162.845 | Tgl 1 |
 | SeaBank Pinjam | Rp 1.627.500 | Rp 232.500 | Tgl 5 |
 | Kredivo 1 | Rp 1.006.050 | Rp 335.350 | Tgl 28 |
 | Kredivo 2 | Rp 641.010 | Rp 213.670 | Tgl 15 |
-| **GRAND TOTAL** | **Rp 8.851.200** | | |
+| **GRAND TOTAL** | **Rp 8.285.119** | | |
 
 ---
 
@@ -162,7 +162,7 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 | F002 | Upload Struk OCR | Foto struk/nota → ocr.space extract text → tampilkan hasil → user konfirmasi | ocr.space |
 | F003 | Pre-loaded Data Hutang | 5 hutang + jadwal cicilan dari studi kasus, sudah tersedia saat app pertama kali dibuka | Tidak |
 | F004 | Home Dashboard | Ringkasan hari ini: pemasukan, pengeluaran, profit, sisa budget, alert jatuh tempo | Tidak |
-| F005 | Status Hutang | Daftar hutang + progress bar + jatuh tempo terdekat + tombol "Tandai Lunas" | Tidak |
+| F005 | Status Hutang | Daftar hutang + progress bar + jatuh tempo terdekat + tombol "Tandai Lunas" + CRUD hutang | Tidak |
 | F006 | Bayar Hutang (Tandai Lunas) | 1 tap → catat pengeluaran + update sisa hutang + update progress | Tidak |
 | F007 | Edit/Hapus Transaksi | Tap transaksi di riwayat → modal popup → ubah jumlah/kategori atau hapus | Tidak |
 | F008 | Laporan Harian | Breakdown pemasukan/pengeluaran per kategori + riwayat transaksi hari ini | Tidak |
@@ -217,7 +217,7 @@ Money Manager adalah **personal financial dashboard** berbasis web (PWA) untuk s
 | 1 | **Home** | Dashboard ringkasan hari ini + alert jatuh tempo + navigasi |
 | 2 | **Quick Input** | Tap-based input transaksi (MASUK/KELUAR → kategori → nominal) |
 | 3 | **Upload Struk** | Foto/upload struk → OCR → konfirmasi |
-| 4 | **Status Hutang** | Daftar hutang + progress + tandai lunas |
+| 4 | **Status Hutang** | Daftar hutang + progress + tandai lunas + CRUD hutang |
 | 5 | **Laporan** | Harian/mingguan breakdown + riwayat transaksi |
 | 6 | **Settings** | Adjust budget, preset nominal, target tanggal lunas |
 
@@ -271,6 +271,8 @@ Total: **6 tap, 0 ketik, < 3 detik**
 | total_original | INTEGER | Sisa hutang per 12 Feb 2026 |
 | total_remaining | INTEGER | Sisa hutang real-time |
 | monthly_installment | INTEGER | Cicilan per bulan |
+| total_installments | INTEGER | Jumlah total cicilan |
+| paid_installments | INTEGER | Jumlah cicilan yang sudah dibayar |
 | due_day | INTEGER | Tanggal jatuh tempo (1-28) |
 | late_fee_type | TEXT | 'pct_monthly' atau 'pct_daily' |
 | late_fee_rate | REAL | Persentase denda |
@@ -309,7 +311,7 @@ Total: **6 tap, 0 ketik, < 3 detik**
 | budget_makan | 25000 | Budget harian makan |
 | budget_rokok | 27000 | Budget harian rokok |
 | budget_pulsa | 5000 | Budget harian pulsa |
-| budget_rt | 85000 | Budget harian rumah tangga |
+| budget_rt | 75000 | Budget harian rumah tangga |
 | debt_target_date | 2026-04-13 | Target tanggal lunas semua hutang |
 
 ### 6.5 Kategori
@@ -403,3 +405,4 @@ Total: **6 tap, 0 ketik, < 3 detik**
 | 1.0 | 2026-02-13 | Initial template (incorrect — web app generic) |
 | 1.1 | 2026-02-13 | Attempted completion (still incorrect) |
 | 2.0 | 2026-02-13 | Complete rewrite — dashboard PWA, studi kasus nyata, quick-tap UI |
+| 2.1 | 2026-02-13 | Math correction: Shopee→4,359,170, SPayLater→651,389, Grand→8,285,119, target→138,085, add 2 columns to debts table |
