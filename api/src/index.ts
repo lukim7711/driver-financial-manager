@@ -5,6 +5,7 @@ import { transactionRoute } from './routes/transaction'
 import { dashboardRoute } from './routes/dashboard'
 import { debtRoute } from './routes/debt'
 import { reportRoute } from './routes/report'
+import { ocrRoute } from './routes/ocr'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -38,7 +39,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '0.4.0',
+      version: '0.5.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -50,6 +51,7 @@ app.route('/api/transactions', transactionRoute)
 app.route('/api/dashboard', dashboardRoute)
 app.route('/api/debts', debtRoute)
 app.route('/api/report', reportRoute)
+app.route('/api/ocr', ocrRoute)
 
 // Stub routes
 app.get('/api/settings', async (c) => {
