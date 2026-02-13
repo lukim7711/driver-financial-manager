@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 03:28 WIB
+> Last Updated: 2026-02-14 03:56 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F009 (Ringkasan Mingguan)
+- **Fase:** F015 (Flexible Debt Schedules)
 - **Status:** ✅ MERGED
-- **PR:** [#12](https://github.com/lukim7711/driver-financial-manager/pull/12)
-- **Catatan:** Tab Harian/Mingguan di Report, weekly summary + trends + daily bars.
+- **PR:** [#13](https://github.com/lukim7711/driver-financial-manager/pull/13)
+- **Catatan:** Cicilan dinamis (sisa terakhir auto-calc), pinjaman sederhana, inline edit schedule.
 
 ---
 
-## 🏆 STATUS: v1.4.0 — Weekly Report
+## 🏆 STATUS: v1.5.0 — Flexible Debts
 
 ### Infrastructure
 
@@ -48,6 +48,7 @@
 | F012 | CRUD Hutang (Tambah/Edit/Hapus) | ✅ DONE | [#10](https://github.com/lukim7711/driver-financial-manager/pull/10) |
 | BDG-FIX | Budget Harian CRUD + Fix Prorate | ✅ DONE | [#11](https://github.com/lukim7711/driver-financial-manager/pull/11) |
 | F009 | Ringkasan Mingguan | ✅ DONE | [#12](https://github.com/lukim7711/driver-financial-manager/pull/12) |
+| F015 | Flexible Debt Schedules | ✅ DONE | [#13](https://github.com/lukim7711/driver-financial-manager/pull/13) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -69,7 +70,7 @@
 
 ---
 
-## API v1.4.0 — 21 Endpoints
+## API v1.5.0 — 22 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -79,6 +80,7 @@
 | `/api/debts` | GET, POST | F005 + F012 |
 | `/api/debts/:id` | PUT, DELETE | F012 |
 | `/api/debts/:id/pay` | POST | F006 |
+| `/api/debts/:id/schedules/:sid` | PUT | F015 |
 | `/api/report/daily` | GET | F008 |
 | `/api/report/weekly` | GET | F009 |
 | `/api/ocr` | POST | F002 |
@@ -92,33 +94,33 @@
 
 ## Session Log
 
+### Session 18 — 2026-02-14 03:37–03:56 WIB
+
+**Fase:** F015 (Flexible Debt Schedules)
+
+**Problem:** Cicilan tidak merata (screenshot tagihan: Feb-Mei Rp162.845, Jun Rp20.798). Model hutang terlalu kaku — semua cicilan flat, tidak support pinjaman personal.
+
+**Backend:**
+- ✅ Schema: `debt_type` (installment/simple) + `note` columns
+- ✅ DO migration: `migrateDebtTypeNote()`
+- ✅ `generateSchedules`: last installment = remainder (not flat)
+- ✅ `POST /api/debts`: accept `debt_type: 'simple'` + `due_date` + `note`
+- ✅ `PUT /api/debts/:id/schedules/:sid`: edit individual schedule amount/date
+- ✅ `GET /api/debts`: returns `debt_type` + `note`
+
+**Frontend:**
+- ✅ `AddDebtForm.tsx`: toggle 🏦 Cicilan / 🤝 Pinjaman + preview jadwal with ⚡
+- ✅ `DebtCard.tsx`: inline schedule edit (tap nominal), ⚡ sisa badge, 🤝 pinjaman badge
+- ✅ `Debts.tsx`: wire new fields + onRefresh
+
+**Design:** 2 layers only (AddDebtForm + DebtCard inline edit). No extra dialogs.
+
+**Result:** CI ✅ PASS → Squash-merged ([#13](https://github.com/lukim7711/driver-financial-manager/pull/13))
+
 ### Session 17 — 2026-02-14 03:23–03:28 WIB
 
 **Fase:** F009 (Ringkasan Mingguan)
-
-**Backend:**
-- ✅ New endpoint: `GET /api/report/weekly?date=YYYY-MM-DD`
-- ✅ Mon–Sun week range from any date
-- ✅ Daily breakdown: income, expense, debt_payment, profit per day
-- ✅ Weekly totals + averages (daily_income, daily_expense, daily_profit)
-- ✅ Top 5 expense categories with percentage
-- ✅ Income breakdown by category
-- ✅ Comparison with previous week: income/expense/profit trend %
-
-**Frontend:**
-- ✅ `Report.tsx`: Tab switcher 📅 Harian / 📆 Mingguan
-- ✅ `WeeklyReport.tsx` (NEW): Full weekly view — 5 sections
-  - Ringkasan Minggu Ini (total income/expense/profit)
-  - Rata-Rata Harian (3-col grid)
-  - Tren vs Minggu Lalu (⬆️/⬇️/➡️ with color)
-  - Per Hari (daily bars Mon–Sun)
-  - Top Pengeluaran (top 5 categories)
-- ✅ `WeeklyDayBar.tsx` (NEW): Horizontal bar per day
-  - Green = income, Red = expense
-  - "HARI INI" badge
-  - Profit +/- label
-
-**Result:** CI ✅ PASS → Squash-merged ([#12](https://github.com/lukim7711/driver-financial-manager/pull/12))
+**Result:** Squash-merged ([#12](https://github.com/lukim7711/driver-financial-manager/pull/12))
 
 ### Session 16 — 2026-02-14 03:07–03:17 WIB
 
@@ -171,6 +173,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 03:28 WIB
-- **Total Sessions:** 17
-- **Current Phase:** v1.4.0 — Weekly Report (SHIPPED)
+- **Last Updated:** 2026-02-14 03:56 WIB
+- **Total Sessions:** 18
+- **Current Phase:** v1.5.0 — Flexible Debts (SHIPPED)
