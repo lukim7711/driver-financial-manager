@@ -49,9 +49,20 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+-- Table: monthly_expenses (F013)
+CREATE TABLE IF NOT EXISTS monthly_expenses (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  emoji TEXT NOT NULL DEFAULT '📦',
+  amount INTEGER NOT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
 -- Index for faster queries
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_debt_schedule_status ON debt_schedule(status);
 CREATE INDEX IF NOT EXISTS idx_debt_schedule_due_date ON debt_schedule(due_date);
+CREATE INDEX IF NOT EXISTS idx_monthly_expenses_active ON monthly_expenses(is_deleted);
 `

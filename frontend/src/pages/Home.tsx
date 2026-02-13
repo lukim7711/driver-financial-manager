@@ -19,7 +19,7 @@ interface DashboardData {
   }
   budget: {
     daily_expense: number
-    monthly_rt: number
+    total_monthly: number
     spent_today: number
     remaining: number
     percentage_used: number
@@ -31,7 +31,8 @@ interface DashboardData {
     is_on_track: boolean
     breakdown: {
       daily_expense: number
-      prorated_rt: number
+      prorated_monthly: number
+      total_monthly: number
       daily_debt: number
       days_in_month: number
     }
@@ -56,13 +57,17 @@ interface DashboardData {
 }
 
 export function Home() {
-  const [data, setData] = useState<DashboardData | null>(null)
+  const [data, setData] = useState<DashboardData | null>(
+    null
+  )
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchDashboard = useCallback(async () => {
     const date = todayISO()
-    const res = await apiClient<DashboardData>(`/api/dashboard?date=${date}`)
+    const res = await apiClient<DashboardData>(
+      `/api/dashboard?date=${date}`
+    )
     if (res.success && res.data) {
       setData(res.data)
     }
@@ -88,23 +93,49 @@ export function Home() {
   }
 
   const today = data?.today ?? {
-    income: 0, expense: 0, debt_payment: 0, profit: 0, transaction_count: 0,
+    income: 0,
+    expense: 0,
+    debt_payment: 0,
+    profit: 0,
+    transaction_count: 0,
   }
   const budget = data?.budget ?? {
-    daily_expense: 0, monthly_rt: 0, spent_today: 0, remaining: 0, percentage_used: 0,
+    daily_expense: 0,
+    total_monthly: 0,
+    spent_today: 0,
+    remaining: 0,
+    percentage_used: 0,
   }
   const target = data?.daily_target ?? {
-    target_amount: 0, earned_today: 0, gap: 0, is_on_track: false,
-    breakdown: { daily_expense: 0, prorated_rt: 0, daily_debt: 0, days_in_month: 30 },
-    days_remaining: 0, target_date: '',
+    target_amount: 0,
+    earned_today: 0,
+    gap: 0,
+    is_on_track: false,
+    breakdown: {
+      daily_expense: 0,
+      prorated_monthly: 0,
+      total_monthly: 0,
+      daily_debt: 0,
+      days_in_month: 30,
+    },
+    days_remaining: 0,
+    target_date: '',
   }
   const dues = data?.upcoming_dues ?? []
   const debt = data?.debt_summary ?? {
-    total_original: 0, total_remaining: 0, total_paid: 0, progress_percentage: 0, target_date: '',
+    total_original: 0,
+    total_remaining: 0,
+    total_paid: 0,
+    progress_percentage: 0,
+    target_date: '',
   }
 
-  const totalDailyBudget = budget.daily_expense +
-    (budget.monthly_rt > 0 ? Math.round(budget.monthly_rt / target.breakdown.days_in_month) : 0)
+  const daysInMonth = target.breakdown.days_in_month || 30
+  const proratedMonthly = budget.total_monthly > 0
+    ? Math.round(budget.total_monthly / daysInMonth)
+    : 0
+  const totalDailyBudget =
+    budget.daily_expense + proratedMonthly
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -112,13 +143,19 @@ export function Home() {
       <div className="bg-emerald-600 px-4 pt-6 pb-4 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">💰 Money Manager</h1>
-            <p className="text-sm text-emerald-100">📅 {formatDateLong(todayISO())}</p>
+            <h1 className="text-lg font-bold">
+              💰 Money Manager
+            </h1>
+            <p className="text-sm text-emerald-100">
+              📅 {formatDateLong(todayISO())}
+            </p>
           </div>
           <button
             type="button"
             onClick={handleRefresh}
-            className={`tap-highlight-none rounded-full p-2 transition-all ${refreshing ? 'animate-spin' : ''}`}
+            className={`tap-highlight-none rounded-full p-2 transition-all ${
+              refreshing ? 'animate-spin' : ''
+            }`}
           >
             🔄
           </button>
@@ -143,7 +180,8 @@ export function Home() {
           isOnTrack={target.is_on_track}
           breakdown={{
             dailyExpense: target.breakdown.daily_expense,
-            proratedRt: target.breakdown.prorated_rt,
+            proratedMonthly:
+              target.breakdown.prorated_monthly,
             dailyDebt: target.breakdown.daily_debt,
             daysInMonth: target.breakdown.days_in_month,
           }}
@@ -161,9 +199,14 @@ export function Home() {
         {/* Due alerts */}
         {dues.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-500">⚠️ JATUH TEMPO</h2>
+            <h2 className="text-sm font-semibold text-gray-500">
+              ⚠️ JATUH TEMPO
+            </h2>
             {dues.map((due) => (
-              <DueAlert key={`${due.debt_id}-${due.due_date}`} due={due} />
+              <DueAlert
+                key={`${due.debt_id}-${due.due_date}`}
+                due={due}
+              />
             ))}
           </div>
         )}

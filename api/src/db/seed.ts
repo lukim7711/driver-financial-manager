@@ -55,12 +55,15 @@ INSERT INTO debt_schedule (id, debt_id, due_date, amount, status, paid_date, pai
 ('kredivo2-02', 'kredivo2', '2026-03-15', 213670, 'unpaid', NULL, NULL),
 ('kredivo2-03', 'kredivo2', '2026-04-15', 213670, 'unpaid', NULL, NULL);
 
--- Default settings
+-- Default settings (daily budgets + target date)
 INSERT INTO settings (key, value) VALUES
 ('budget_bbm', '40000'),
 ('budget_makan', '25000'),
 ('budget_rokok', '27000'),
 ('budget_pulsa', '5000'),
-('budget_rt', '75000'),
 ('debt_target_date', '2026-04-13');
+
+-- Default monthly expenses (F013)
+INSERT INTO monthly_expenses (id, name, emoji, amount, is_deleted, created_at) VALUES
+('me-rt', 'RT/Rumah Tangga', '🏠', 75000, 0, '2026-02-12T00:00:00+07:00');
 `

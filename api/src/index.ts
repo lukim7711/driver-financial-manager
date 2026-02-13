@@ -7,6 +7,7 @@ import { debtRoute } from './routes/debt'
 import { reportRoute } from './routes/report'
 import { ocrRoute } from './routes/ocr'
 import { settingsRoute } from './routes/settings'
+import { monthlyExpenseRoute } from './routes/monthly-expense'
 import { MoneyManagerDB } from './db/durable-object'
 
 type Bindings = {
@@ -30,7 +31,9 @@ app.use('*', cors({
     if (origin.endsWith('.pages.dev')) return origin
     return null
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowMethods: [
+    'GET', 'POST', 'PUT', 'DELETE', 'OPTIONS',
+  ],
   allowHeaders: ['Content-Type', 'Authorization'],
   maxAge: 86400,
 }))
@@ -40,7 +43,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '1.0.0',
+      version: '1.2.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -54,15 +57,21 @@ app.route('/api/debts', debtRoute)
 app.route('/api/report', reportRoute)
 app.route('/api/ocr', ocrRoute)
 app.route('/api/settings', settingsRoute)
+app.route('/api/monthly-expenses', monthlyExpenseRoute)
 
 app.notFound((c) => {
-  return c.json({ success: false, error: 'Endpoint not found' }, 404)
+  return c.json(
+    { success: false, error: 'Endpoint not found' },
+    404
+  )
 })
 
 app.onError((err, c) => {
   return c.json({
     success: false,
-    error: c.env.ENVIRONMENT === 'production' ? 'Internal server error' : err.message,
+    error: c.env.ENVIRONMENT === 'production'
+      ? 'Internal server error'
+      : err.message,
   }, 500)
 })
 
