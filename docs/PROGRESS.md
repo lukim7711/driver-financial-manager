@@ -1,119 +1,62 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-13 23:26 WIB
+> Last Updated: 2026-02-13 23:35 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-13
-- **Fase:** Fase 10 — Build F002 (OCR Upload)
+- **Fase:** Fase 11 — Settings + PWA + Deploy
 - **Status:** ✅ DONE
-- **Branch:** `feat/F002-ocr-upload`
-- **PR:** [#7](https://github.com/lukim7711/driver-financial-manager/pull/7) — MERGED
-- **Catatan:** Upload Struk OCR — ALL 8/8 MVP COMPLETE 🏆
+- **Branch:** `feat/settings-pwa-deploy`
+- **PR:** [#8](https://github.com/lukim7711/driver-financial-manager/pull/8) — MERGED
+- **Catatan:** Settings page + PWA finalize + CD pipeline + Deploy guide
 
 ---
 
-## 🏆 MVP STATUS: 8/8 MUST FEATURES DONE!
+## 🏆 STATUS: v1.0.0 SHIPPED!
 
 ### Infrastructure
 
-| ID | Nama | Priority | Spec | Build | PR |
-|----|------|----------|------|-------|----|
-| SETUP | Project Setup | MUST | ✅ | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
+| ID | Nama | Status | PR |
+|----|------|--------|----|
+| SETUP | Project Setup | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
+| CD | GitHub Actions Deploy | ✅ DONE | main |
 
-### MVP Features
+### MVP Features (8/8 MUST — ALL DONE)
 
-| ID | Nama | Priority | Spec | Build | PR |
-|----|------|----------|------|-------|----|
-| F001 | Quick-Tap Input Transaksi | MUST | ✅ | ✅ DONE | [#3](https://github.com/lukim7711/driver-financial-manager/pull/3) |
-| F002 | Upload Struk OCR | MUST | ✅ | ✅ DONE | [#7](https://github.com/lukim7711/driver-financial-manager/pull/7) |
-| F003 | Pre-loaded Data Hutang | MUST | ✅ | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
-| F004 | Home Dashboard | MUST | ✅ | ✅ DONE | [#4](https://github.com/lukim7711/driver-financial-manager/pull/4) |
-| F005 | Status Hutang | MUST | ✅ | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
-| F006 | Bayar Hutang (Tandai Lunas) | MUST | ✅ | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
-| F007 | Edit/Hapus Transaksi | MUST | ✅ | ✅ DONE | [#6](https://github.com/lukim7711/driver-financial-manager/pull/6) |
-| F008 | Laporan Harian | MUST | ✅ | ✅ DONE | [#6](https://github.com/lukim7711/driver-financial-manager/pull/6) |
+| ID | Nama | Status | PR |
+|----|------|--------|----|
+| F001 | Quick-Tap Input Transaksi | ✅ DONE | [#3](https://github.com/lukim7711/driver-financial-manager/pull/3) |
+| F002 | Upload Struk OCR | ✅ DONE | [#7](https://github.com/lukim7711/driver-financial-manager/pull/7) |
+| F003 | Pre-loaded Data Hutang | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
+| F004 | Home Dashboard | ✅ DONE | [#4](https://github.com/lukim7711/driver-financial-manager/pull/4) |
+| F005 | Status Hutang | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
+| F006 | Bayar Hutang (Tandai Lunas) | ✅ DONE | [#5](https://github.com/lukim7711/driver-financial-manager/pull/5) |
+| F007 | Edit/Hapus Transaksi | ✅ DONE | [#6](https://github.com/lukim7711/driver-financial-manager/pull/6) |
+| F008 | Laporan Harian | ✅ DONE | [#6](https://github.com/lukim7711/driver-financial-manager/pull/6) |
+
+### Bonus
+
+| ID | Nama | Status | PR |
+|----|------|--------|----|
+| Settings | Budget per Kategori | ✅ DONE | [#8](https://github.com/lukim7711/driver-financial-manager/pull/8) |
+| PWA | Manifest + SW + Cache | ✅ DONE | [#8](https://github.com/lukim7711/driver-financial-manager/pull/8) |
+| Deploy | CD via GitHub Actions | ✅ DONE | main |
 
 ### Future Features (SHOULD)
 
 | ID | Nama | Status |
 |----|------|--------|
 | F009 | Ringkasan Mingguan | ⬜ TODO |
-| F010 | Adjust Budget | ⬜ TODO |
+| F010 | Adjust Budget | ✅ DONE (via Settings) |
 | F011 | Help/Onboarding | ⬜ TODO |
 
 ---
 
-## Next Steps
-
-1. [ ] **Deploy** — Cloudflare Pages (frontend) + Workers (API)
-2. [ ] **Set secret** — `wrangler secret put OCR_SPACE_API_KEY`
-3. [ ] **F009** — Ringkasan Mingguan (SHOULD)
-4. [ ] **F010** — Adjust Budget (SHOULD)
-5. [ ] **F011** — Help/Onboarding (SHOULD)
-
----
-
-## Session Log
-
-### Session 10 — 2026-02-13 23:17 WIB
-
-**Fase:** Fase 10 — Build F002 (Upload Struk OCR)
-
-**Yang dikerjakan:**
-
-#### Backend
-- ✅ `api/src/routes/ocr.ts` — POST /api/ocr
-  - Proxy to ocr.space (language: ind, OCREngine: 2)
-  - Smart parsing: 6 keyword rule sets for category detection
-  - Amount extraction: total/jumlah → Rp patterns → largest number (500-50M)
-  - Note builder: first line of receipt text (max 50 chars)
-  - Blob duck-type guard for Workers TS compat
-- ✅ `api/src/index.ts` — Mount OCR route, version 0.5.0
-
-#### Frontend
-- ✅ `OcrUpload.tsx` — Camera/gallery upload, processing spinner, error/retry
-- ✅ `OcrResult.tsx` — Confirm suggestion (Simpan/Edit/Buang), full edit form
-- ✅ `compress-image.ts` — Auto-compress >1MB to 1280px JPEG quality 70%
-
-#### CI Fixes
-- `instanceof File` → duck-type `isBlobLike()` (Workers has no File type)
-- `FormDataEntryValue` → `unknown` param (Workers TS subset)
-
-**CI:** ✅ PASS → Merged ([#7](https://github.com/lukim7711/driver-financial-manager/pull/7))
-
-### Session 9 — 2026-02-13 23:11 WIB
-
-**Fase:** Build F007+F008 (Laporan Harian + Edit/Delete)
-- ✅ GET /api/report/daily + PUT/DELETE /api/transactions/:id
-- ✅ Report.tsx, CategoryBar, TransactionItem, EditTransaction
-- **CI:** ✅ PASS → Merged ([#6](https://github.com/lukim7711/driver-financial-manager/pull/6))
-
-### Session 8 — 2026-02-13 23:03 WIB
-
-**Fase:** Build F005+F006 (Status Hutang + Bayar Cicilan)
-- ✅ GET /api/debts + POST /api/debts/:id/pay
-- ✅ Debts.tsx, DebtCard, PayDialog, PaySuccess
-- **CI:** ✅ PASS → Merged ([#5](https://github.com/lukim7711/driver-financial-manager/pull/5))
-
-### Session 7 — 2026-02-13 22:57 WIB
-
-**Fase:** Build F004 Home Dashboard
-- ✅ GET /api/dashboard + Home.tsx + 5 components
-- **CI:** ✅ PASS → Merged ([#4](https://github.com/lukim7711/driver-financial-manager/pull/4))
-
-### Session 6 — 2026-02-13 22:48 WIB
-
-**Fase:** Build F001 Quick-Tap Input
-- ✅ POST/GET /api/transactions + QuickInput 3-step flow
-- **CI:** ✅ PASS → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
-
----
-
-## API Version: 0.5.0
+## API v1.0.0 — 8 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -124,11 +67,70 @@
 | `/api/debts/:id/pay` | POST | F006 |
 | `/api/report/daily` | GET | F008 |
 | `/api/ocr` | POST | F002 |
+| `/api/settings` | GET, PUT | Settings |
+
+---
+
+## Session Log
+
+### Session 11 — 2026-02-13 23:27 WIB
+
+**Fase:** Fase 11 — Settings + PWA + Deploy
+
+**Yang dikerjakan:**
+
+#### Backend
+- ✅ `api/src/routes/settings.ts` — GET/PUT /api/settings (budget CRUD)
+- ✅ `api/src/routes/report.ts` — Dynamic budgets from DB (loadBudgets)
+- ✅ `api/src/index.ts` — Mount settings route, version 1.0.0
+
+#### Frontend
+- ✅ `Settings.tsx` — Budget editor (harian + bulanan), live total, save
+- ✅ `App.tsx` — Added /ocr route (missing from F002)
+- ✅ `main.tsx` — SW registration
+- ✅ `sw.js` — Improved caching strategy
+- ✅ `_redirects` — SPA fallback for Cloudflare Pages
+- ✅ `_headers` — Security headers
+
+#### Deploy
+- ✅ `.github/workflows/deploy.yml` — CD auto-deploy on push to main
+- ✅ `docs/DEPLOY-GUIDE.md` — Complete setup panduan
+
+#### CI Fix
+- `res.error` → narrowed via discriminated union (`if/else` on `res.success`)
+
+**CI:** ✅ PASS → Merged ([#8](https://github.com/lukim7711/driver-financial-manager/pull/8))
+
+### Session 10 — 2026-02-13 23:17 WIB
+
+**Fase:** Build F002 (Upload Struk OCR)
+- ✅ POST /api/ocr + smart parsing + OcrUpload + OcrResult + compress-image
+- **CI:** ✅ PASS → Merged ([#7](https://github.com/lukim7711/driver-financial-manager/pull/7))
+
+### Session 9 — 2026-02-13 23:11 WIB
+
+**Fase:** Build F007+F008 (Laporan Harian + Edit/Delete)
+- **CI:** ✅ PASS → Merged ([#6](https://github.com/lukim7711/driver-financial-manager/pull/6))
+
+### Session 8 — 2026-02-13 23:03 WIB
+
+**Fase:** Build F005+F006 (Status Hutang + Bayar Cicilan)
+- **CI:** ✅ PASS → Merged ([#5](https://github.com/lukim7711/driver-financial-manager/pull/5))
+
+### Session 7 — 2026-02-13 22:57 WIB
+
+**Fase:** Build F004 Home Dashboard
+- **CI:** ✅ PASS → Merged ([#4](https://github.com/lukim7711/driver-financial-manager/pull/4))
+
+### Session 6 — 2026-02-13 22:48 WIB
+
+**Fase:** Build F001 Quick-Tap Input
+- **CI:** ✅ PASS → Merged ([#3](https://github.com/lukim7711/driver-financial-manager/pull/3))
 
 ---
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-13 23:26 WIB
-- **Total Sessions:** 10
-- **Current Phase:** MVP COMPLETE — Ready for Deploy
+- **Last Updated:** 2026-02-13 23:35 WIB
+- **Total Sessions:** 11
+- **Current Phase:** 🚀 v1.0.0 SHIPPED — Production Ready
