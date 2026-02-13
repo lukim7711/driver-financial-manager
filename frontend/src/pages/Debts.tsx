@@ -87,6 +87,21 @@ export function Debts() {
   }, [fetchDebts])
 
   const handlePay = (debt: Debt) => {
+    if (debt.debt_type === 'record') {
+      // Record mode: create fake schedule
+      setPayTarget({
+        debt,
+        schedule: {
+          id: '',
+          due_date: '',
+          amount: debt.total_remaining,
+          status: 'unpaid',
+          paid_date: null,
+          paid_amount: null,
+        },
+      })
+      return
+    }
     const sched = debt.next_schedule
     if (!sched) return
     setPayTarget({ debt, schedule: sched })
@@ -98,12 +113,15 @@ export function Debts() {
   ) => {
     if (!payTarget) return
     const { debt, schedule } = payTarget
+    const isRecord = debt.debt_type === 'record'
     const res = await apiClient<PayResult>(
       `/api/debts/${debt.id}/pay`,
       {
         method: 'POST',
         body: JSON.stringify({
-          schedule_id: schedule.id,
+          schedule_id: isRecord
+            ? undefined
+            : schedule.id,
           amount,
           is_full_payment: isFull,
         }),
@@ -127,6 +145,7 @@ export function Debts() {
     note?: string
     late_fee_rate: number
     late_fee_type: string
+    debt_type?: string
     schedules: Array<{
       due_date: string
       amount: number
@@ -221,7 +240,7 @@ export function Debts() {
       {/* Header */}
       <div className="bg-blue-600 px-4 pt-6 pb-4 text-white">
         <h1 className="text-lg font-bold">
-          \ud83d\udcb3 Status Hutang
+          {"\ud83d\udcb3"} Status Hutang
         </h1>
         <p className="mt-2 text-2xl font-bold">
           {formatRupiah(summary.total_remaining)}
@@ -238,7 +257,7 @@ export function Debts() {
           />
         </div>
         <p className="mt-1 text-xs text-blue-200">
-          {summary.progress_percentage}% lunas \u2022{' '}
+          {summary.progress_percentage}% lunas {"\u2022"}{' '}
           {formatRupiah(summary.total_paid)} terbayar
         </p>
       </div>
@@ -246,7 +265,7 @@ export function Debts() {
       <div className="space-y-3 p-4">
         {allPaid && (
           <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-6 text-center">
-            <p className="text-3xl">\ud83c\udf89</p>
+            <p className="text-3xl">{"\ud83c\udf89"}</p>
             <p className="mt-2 text-lg font-bold text-emerald-700">
               Semua Hutang LUNAS!
             </p>
@@ -268,7 +287,7 @@ export function Debts() {
 
         {debts.length === 0 && !allPaid && (
           <div className="rounded-2xl bg-gray-100 p-6 text-center">
-            <p className="text-3xl">\ud83d\udcad</p>
+            <p className="text-3xl">{"\ud83d\udcad"}</p>
             <p className="mt-2 text-sm text-gray-500">
               Belum ada hutang. Tap + untuk
               menambah.
