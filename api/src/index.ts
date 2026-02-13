@@ -32,7 +32,7 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   maxAge: 86400,
-}))
+})
 
 // Health check
 app.get('/', (c) => {
@@ -55,20 +55,17 @@ function getDB(c: { env: Bindings }) {
 
 // API routes (stubs for now - will be expanded per feature)
 app.get('/api/transactions', async (c) => {
-  const db = getDB(c)
-  // TODO: Implement transaction query
+  // TODO: Implement transaction query using getDB(c)
   return c.json({ success: true, data: [] })
 })
 
 app.get('/api/debts', async (c) => {
-  const db = getDB(c)
-  // TODO: Implement debts query
+  // TODO: Implement debts query using getDB(c)
   return c.json({ success: true, data: [] })
 })
 
 app.get('/api/dashboard', async (c) => {
-  const db = getDB(c)
-  // TODO: Implement dashboard aggregation
+  // TODO: Implement dashboard aggregation using getDB(c)
   return c.json({
     success: true,
     data: {
@@ -79,8 +76,7 @@ app.get('/api/dashboard', async (c) => {
 })
 
 app.get('/api/settings', async (c) => {
-  const db = getDB(c)
-  // TODO: Implement settings query
+  // TODO: Implement settings query using getDB(c)
   return c.json({ success: true, data: {} })
 })
 

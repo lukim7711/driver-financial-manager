@@ -1,28 +1,24 @@
-import type { DurableObject, DurableObjectState } from 'cloudflare:workers'
+import { DurableObject } from 'cloudflare:workers'
 import { SCHEMA_SQL } from './schema'
 import { SEED_SQL } from './seed'
 
-export class MoneyManagerDB implements DurableObject {
-  private sql: SqlStorage
+export class MoneyManagerDB extends DurableObject {
   private initialized = false
-
-  constructor(state: DurableObjectState) {
-    this.sql = state.storage.sql
-  }
 
   private async initialize() {
     if (this.initialized) return
 
     // Create tables if not exist
-    this.sql.exec(SCHEMA_SQL)
+    this.ctx.storage.sql.exec(SCHEMA_SQL)
 
     // Check if seed data already exists
-    const result = this.sql.exec('SELECT COUNT(*) as count FROM debts')
-    const count = result?.[0]?.count as number | undefined
+    const result = this.ctx.storage.sql.exec('SELECT COUNT(*) as count FROM debts')
+    const rows = [...result]
+    const count = rows[0]?.count as number | undefined
 
     // Seed data only if tables are empty (idempotent)
     if (!count || count === 0) {
-      this.sql.exec(SEED_SQL)
+      this.ctx.storage.sql.exec(SEED_SQL)
     }
 
     this.initialized = true
@@ -41,8 +37,9 @@ export class MoneyManagerDB implements DurableObject {
         const body = await request.json() as { query: string; params?: unknown[] }
         const { query, params = [] } = body
         
-        const result = this.sql.exec(query, ...params)
-        return Response.json({ success: true, data: result })
+        const result = this.ctx.storage.sql.exec(query, ...params)
+        const rows = [...result]
+        return Response.json({ success: true, data: rows })
       }
 
       // GET /health - Health check
