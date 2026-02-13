@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 03:56 WIB
+> Last Updated: 2026-02-14 04:11 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F015 (Flexible Debt Schedules)
+- **Fase:** F015v2 (Unified Debt Form)
 - **Status:** ✅ MERGED
-- **PR:** [#13](https://github.com/lukim7711/driver-financial-manager/pull/13)
-- **Catatan:** Cicilan dinamis (sisa terakhir auto-calc), pinjaman sederhana, inline edit schedule.
+- **PR:** [#14](https://github.com/lukim7711/driver-financial-manager/pull/14)
+- **Catatan:** 1 form, 0 toggle, 3 skenario (flat/dinamis/pinjaman). Replaces F015v1 toggle.
 
 ---
 
-## 🏆 STATUS: v1.5.0 — Flexible Debts
+## 🏆 STATUS: v1.6.0 — Unified Debt Form
 
 ### Infrastructure
 
@@ -49,6 +49,7 @@
 | BDG-FIX | Budget Harian CRUD + Fix Prorate | ✅ DONE | [#11](https://github.com/lukim7711/driver-financial-manager/pull/11) |
 | F009 | Ringkasan Mingguan | ✅ DONE | [#12](https://github.com/lukim7711/driver-financial-manager/pull/12) |
 | F015 | Flexible Debt Schedules | ✅ DONE | [#13](https://github.com/lukim7711/driver-financial-manager/pull/13) |
+| F015v2 | Unified Debt Form (1 form, 3 skenario) | ✅ DONE | [#14](https://github.com/lukim7711/driver-financial-manager/pull/14) |
 | OCR-FIX | OCR entry point + language fix | ✅ DONE | main |
 | CI-FIX | CD pipeline cache fix | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass (workflow_run) | ✅ DONE | main |
@@ -70,14 +71,14 @@
 
 ---
 
-## API v1.5.0 — 22 Endpoints
+## API v1.6.0 — 22 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
 | `/api/transactions` | POST, GET | F001 |
 | `/api/transactions/:id` | PUT, DELETE | F007 |
 | `/api/dashboard` | GET | F004 + DT001 |
-| `/api/debts` | GET, POST | F005 + F012 |
+| `/api/debts` | GET, POST | F005 + F012 + F015v2 |
 | `/api/debts/:id` | PUT, DELETE | F012 |
 | `/api/debts/:id/pay` | POST | F006 |
 | `/api/debts/:id/schedules/:sid` | PUT | F015 |
@@ -94,28 +95,33 @@
 
 ## Session Log
 
+### Session 19 — 2026-02-14 04:03–04:11 WIB
+
+**Fase:** F015v2 (Unified Debt Form)
+
+**Problem:** F015v1 toggle Cicilan/Pinjaman couldn’t handle dynamic installments (different amount per month). Real example: Akulaku Feb-May Rp162.845, Jun Rp20.798.
+
+**Solution:** 1 form, 0 toggle:
+- ⚡ Shortcut “Isi Rata”: auto-fill schedule rows
+- Editable per-row: date picker + amount + 🗑️ delete
+- ➕ Tambah Jadwal: manual row add
+- Total checker: real-time ✅/⚠️
+
+**Backend:**
+- `POST /api/debts` accepts `schedules[]` array
+- Validates `sum(schedules) === total_original`
+- Auto-detects: 1 schedule = simple, N = installment
+
+**Frontend:**
+- `AddDebtForm.tsx`: complete rewrite, unified form
+- `Debts.tsx`: wire new data shape
+
+**Result:** CI ✅ PASS → Squash-merged ([#14](https://github.com/lukim7711/driver-financial-manager/pull/14))
+
 ### Session 18 — 2026-02-14 03:37–03:56 WIB
 
 **Fase:** F015 (Flexible Debt Schedules)
-
-**Problem:** Cicilan tidak merata (screenshot tagihan: Feb-Mei Rp162.845, Jun Rp20.798). Model hutang terlalu kaku — semua cicilan flat, tidak support pinjaman personal.
-
-**Backend:**
-- ✅ Schema: `debt_type` (installment/simple) + `note` columns
-- ✅ DO migration: `migrateDebtTypeNote()`
-- ✅ `generateSchedules`: last installment = remainder (not flat)
-- ✅ `POST /api/debts`: accept `debt_type: 'simple'` + `due_date` + `note`
-- ✅ `PUT /api/debts/:id/schedules/:sid`: edit individual schedule amount/date
-- ✅ `GET /api/debts`: returns `debt_type` + `note`
-
-**Frontend:**
-- ✅ `AddDebtForm.tsx`: toggle 🏦 Cicilan / 🤝 Pinjaman + preview jadwal with ⚡
-- ✅ `DebtCard.tsx`: inline schedule edit (tap nominal), ⚡ sisa badge, 🤝 pinjaman badge
-- ✅ `Debts.tsx`: wire new fields + onRefresh
-
-**Design:** 2 layers only (AddDebtForm + DebtCard inline edit). No extra dialogs.
-
-**Result:** CI ✅ PASS → Squash-merged ([#13](https://github.com/lukim7711/driver-financial-manager/pull/13))
+**Result:** Squash-merged ([#13](https://github.com/lukim7711/driver-financial-manager/pull/13))
 
 ### Session 17 — 2026-02-14 03:23–03:28 WIB
 
@@ -173,6 +179,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 03:56 WIB
-- **Total Sessions:** 18
-- **Current Phase:** v1.5.0 — Flexible Debts (SHIPPED)
+- **Last Updated:** 2026-02-14 04:11 WIB
+- **Total Sessions:** 19
+- **Current Phase:** v1.6.0 — Unified Debt Form (SHIPPED)
