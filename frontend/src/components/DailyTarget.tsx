@@ -38,7 +38,7 @@ export function DailyTarget({
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-600">
-          \uD83C\uDFAF Target Hari Ini
+          🎯 Target Hari Ini
         </span>
         <span className="text-xs text-gray-400">
           {daysRemaining} hari lagi
@@ -90,8 +90,8 @@ export function DailyTarget({
           : 'bg-red-100 text-red-700'
       }`}>
         {isOnTrack
-          ? `\u2705 Surplus ${formatRupiah(gap)}`
-          : `\u26A0\uFE0F Kurang ${formatRupiah(Math.abs(gap))}`
+          ? `✅ Surplus ${formatRupiah(gap)}`
+          : `⚠️ Kurang ${formatRupiah(Math.abs(gap))}`
         }
       </div>
 
@@ -101,13 +101,13 @@ export function DailyTarget({
           Rincian target:
         </p>
         <div className="flex justify-between text-xs text-gray-500">
-          <span>\uD83D\uDCB8 Pengeluaran harian</span>
+          <span>💸 Pengeluaran harian</span>
           <span>{formatRupiah(breakdown.dailyExpense)}</span>
         </div>
         {breakdown.proratedMonthly > 0 && (
           <div className="flex justify-between text-xs text-gray-500">
             <span>
-              \uD83C\uDFE0 Bulanan \u00F7 {breakdown.daysInMonth}
+              🏠 Bulanan ÷ {breakdown.daysInMonth}
             </span>
             <span>
               {formatRupiah(breakdown.proratedMonthly)}
@@ -116,7 +116,7 @@ export function DailyTarget({
         )}
         <div className="flex justify-between text-xs text-gray-500">
           <span>
-            \uD83D\uDCB3 Hutang \u00F7 {daysRemaining} hari
+            💳 Hutang ÷ {daysRemaining} hari
           </span>
           <span>{formatRupiah(breakdown.dailyDebt)}</span>
         </div>
