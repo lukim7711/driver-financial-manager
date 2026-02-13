@@ -7,7 +7,11 @@ interface BudgetBarProps {
   percentageUsed: number
 }
 
-export function BudgetBar({ totalDaily, remaining, percentageUsed }: BudgetBarProps) {
+export function BudgetBar({
+  totalDaily,
+  remaining,
+  percentageUsed,
+}: BudgetBarProps) {
   const isOver = remaining < 0
   const barWidth = Math.min(percentageUsed, 100)
   const barColor = isOver
@@ -19,10 +23,14 @@ export function BudgetBar({ totalDaily, remaining, percentageUsed }: BudgetBarPr
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-500">Sisa Budget</span>
-        <span className={`text-sm font-semibold ${
-          isOver ? 'text-red-600' : 'text-gray-700'
-        }`}>
+        <span className="text-sm text-gray-500">
+          Sisa Budget Harian
+        </span>
+        <span
+          className={`text-sm font-semibold ${
+            isOver ? 'text-red-600' : 'text-gray-700'
+          }`}
+        >
           {formatRupiah(Math.abs(remaining))}
           {isOver ? ' (OVER)' : ''}
         </span>
