@@ -13,12 +13,18 @@ function getDB(env: Bindings) {
   return env.DB.get(id)
 }
 
-async function queryDB(db: DurableObjectStub, sql: string, params: unknown[] = []) {
+async function queryDB(
+  db: DurableObjectStub,
+  sql: string,
+  params: unknown[] = []
+) {
   const res = await db.fetch(new Request('http://do/query', {
     method: 'POST',
     body: JSON.stringify({ query: sql, params }),
   }))
-  const result = await res.json() as ApiResponse<Record<string, unknown>[]>
+  const result = await res.json() as ApiResponse<
+    Record<string, unknown>[]
+  >
   return result.data || []
 }
 
@@ -38,12 +44,7 @@ const EXPENSE_CATEGORIES: Record<string, CategoryMeta> = {
   lainnya: { emoji: '\ud83d\udce6', label: 'Lainnya' },
 }
 
-const DEFAULT_BUDGETS: Record<string, number> = {
-  bbm: 40000, makan: 25000, rokok: 27000, pulsa: 5000, rt: 75000,
-  parkir: 0, service: 0, lainnya: 0,
-}
-
-const INCOME_CATEGORIES: Record<string, { emoji: string; label: string }> = {
+const INCOME_CATEGORIES: Record<string, CategoryMeta> = {
   order:    { emoji: '\ud83d\udef5', label: 'Order' },
   tips:     { emoji: '\ud83d\udc9d', label: 'Tips' },
   bonus:    { emoji: '\ud83c\udf81', label: 'Bonus' },
@@ -51,16 +52,23 @@ const INCOME_CATEGORIES: Record<string, { emoji: string; label: string }> = {
   lainnya:  { emoji: '\ud83d\udce6', label: 'Lainnya' },
 }
 
-async function loadBudgets(db: DurableObjectStub): Promise<Record<string, number>> {
-  const budgets = { ...DEFAULT_BUDGETS }
-  const rows = await queryDB(db, `SELECT key, value FROM settings WHERE key LIKE 'budget_%'`)
-  for (const row of rows) {
-    const cat = String(row.key).replace('budget_', '')
-    if (cat in budgets) {
-      budgets[cat] = Number(row.value) || DEFAULT_BUDGETS[cat] || 0
-    }
-  }
-  return budgets
+const DAY_NAMES = [
+  'Minggu', 'Senin', 'Selasa', 'Rabu',
+  'Kamis', 'Jumat', 'Sabtu',
+]
+
+function getMonday(dateStr: string): string {
+  const d = new Date(dateStr)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().slice(0, 10)
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
 }
 
 // GET /api/report/daily?date=YYYY-MM-DD
@@ -69,7 +77,10 @@ route.get('/daily', async (c) => {
     const date = c.req.query('date')
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Parameter date wajib (YYYY-MM-DD)' },
+        {
+          success: false,
+          error: 'Parameter date wajib (YYYY-MM-DD)',
+        },
         400
       )
     }
@@ -78,22 +89,22 @@ route.get('/daily', async (c) => {
     const dateStart = `${date}T00:00:00+07:00`
     const dateEnd = `${date}T23:59:59+07:00`
 
-    const [rows, budgets] = await Promise.all([
-      queryDB(db,
-        `SELECT * FROM transactions
-         WHERE created_at >= ? AND created_at <= ? AND is_deleted = 0
-         ORDER BY created_at ASC`,
-        [dateStart, dateEnd]
-      ),
-      loadBudgets(db),
-    ])
+    const rows = await queryDB(db,
+      `SELECT * FROM transactions
+       WHERE created_at >= ? AND created_at <= ?
+         AND is_deleted = 0
+       ORDER BY created_at ASC`,
+      [dateStart, dateEnd]
+    )
 
     let income = 0
     let expense = 0
     let debtPayment = 0
 
     const expenseMap = new Map<string, number>()
-    const incomeMap = new Map<string, { total: number; count: number }>()
+    const incomeMap = new Map<
+      string, { total: number; count: number }
+    >()
 
     const transactions = rows.map((r) => {
       const amt = Number(r.amount) || 0
@@ -102,11 +113,18 @@ route.get('/daily', async (c) => {
 
       if (type === 'income') {
         income += amt
-        const prev = incomeMap.get(cat) ?? { total: 0, count: 0 }
-        incomeMap.set(cat, { total: prev.total + amt, count: prev.count + 1 })
+        const prev = incomeMap.get(cat) ?? {
+          total: 0, count: 0,
+        }
+        incomeMap.set(cat, {
+          total: prev.total + amt,
+          count: prev.count + 1,
+        })
       } else if (type === 'expense') {
         expense += amt
-        expenseMap.set(cat, (expenseMap.get(cat) ?? 0) + amt)
+        expenseMap.set(
+          cat, (expenseMap.get(cat) ?? 0) + amt
+        )
       } else if (type === 'debt_payment') {
         debtPayment += amt
       }
@@ -125,36 +143,34 @@ route.get('/daily', async (c) => {
 
     const profit = income - expense - debtPayment
 
-    const expenseByCategory = Object.entries(EXPENSE_CATEGORIES).map(
-      ([cat, meta]) => {
-        const spent = expenseMap.get(cat) ?? 0
-        const budget = budgets[cat] ?? 0
-        const pct = budget > 0
-          ? Math.round((spent / budget) * 100)
-          : (spent > 0 ? 100 : 0)
-        return {
-          category: cat,
-          emoji: meta.emoji,
-          label: meta.label,
-          spent,
-          budget,
-          percentage: pct,
-        }
+    const expenseByCategory = Object.entries(
+      EXPENSE_CATEGORIES
+    ).map(([cat, meta]) => {
+      const spent = expenseMap.get(cat) ?? 0
+      return {
+        category: cat,
+        emoji: meta.emoji,
+        label: meta.label,
+        spent,
+        budget: 0,
+        percentage: 0,
       }
-    )
+    })
 
-    const incomeByCategory = Array.from(incomeMap.entries()).map(
-      ([cat, data]) => {
-        const meta = INCOME_CATEGORIES[cat] ?? { emoji: '\ud83d\udce6', label: cat }
-        return {
-          category: cat,
-          emoji: meta.emoji,
-          label: meta.label,
-          total: data.total,
-          count: data.count,
-        }
+    const incomeByCategory = Array.from(
+      incomeMap.entries()
+    ).map(([cat, data]) => {
+      const meta = INCOME_CATEGORIES[cat] ?? {
+        emoji: '\ud83d\udce6', label: cat,
       }
-    )
+      return {
+        category: cat,
+        emoji: meta.emoji,
+        label: meta.label,
+        total: data.total,
+        count: data.count,
+      }
+    })
 
     return c.json<ApiResponse<unknown>>({
       success: true,
@@ -174,7 +190,255 @@ route.get('/daily', async (c) => {
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error: error instanceof Error
+          ? error.message
+          : 'Server error',
+      },
+      500
+    )
+  }
+})
+
+// GET /api/report/weekly?date=YYYY-MM-DD
+route.get('/weekly', async (c) => {
+  try {
+    const date = c.req.query('date')
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: 'Parameter date wajib (YYYY-MM-DD)',
+        },
+        400
+      )
+    }
+
+    const db = getDB(c.env)
+    const monday = getMonday(date)
+    const sunday = addDays(monday, 6)
+
+    const weekStart = `${monday}T00:00:00+07:00`
+    const weekEnd = `${sunday}T23:59:59+07:00`
+
+    // Current week transactions
+    const rows = await queryDB(db,
+      `SELECT * FROM transactions
+       WHERE created_at >= ? AND created_at <= ?
+         AND is_deleted = 0
+       ORDER BY created_at ASC`,
+      [weekStart, weekEnd]
+    )
+
+    // Previous week for comparison
+    const prevMonday = addDays(monday, -7)
+    const prevSunday = addDays(prevMonday, 6)
+    const prevStart = `${prevMonday}T00:00:00+07:00`
+    const prevEnd = `${prevSunday}T23:59:59+07:00`
+
+    const prevRows = await queryDB(db,
+      `SELECT type, amount FROM transactions
+       WHERE created_at >= ? AND created_at <= ?
+         AND is_deleted = 0`,
+      [prevStart, prevEnd]
+    )
+
+    // Build daily breakdown (Mon-Sun)
+    const dailyMap = new Map<string, {
+      income: number
+      expense: number
+      debt_payment: number
+      count: number
+    }>()
+
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(monday, i)
+      dailyMap.set(d, {
+        income: 0, expense: 0,
+        debt_payment: 0, count: 0,
+      })
+    }
+
+    let totalIncome = 0
+    let totalExpense = 0
+    let totalDebt = 0
+    const expenseMap = new Map<string, number>()
+    const incomeMap = new Map<
+      string, { total: number; count: number }
+    >()
+    let activeDays = 0
+    const activeDaySet = new Set<string>()
+
+    for (const r of rows) {
+      const amt = Number(r.amount) || 0
+      const type = String(r.type)
+      const cat = String(r.category)
+      const txDate = String(r.created_at).slice(0, 10)
+
+      activeDaySet.add(txDate)
+
+      const day = dailyMap.get(txDate)
+      if (day) {
+        day.count++
+        if (type === 'income') {
+          day.income += amt
+          totalIncome += amt
+          const prev = incomeMap.get(cat) ?? {
+            total: 0, count: 0,
+          }
+          incomeMap.set(cat, {
+            total: prev.total + amt,
+            count: prev.count + 1,
+          })
+        } else if (type === 'expense') {
+          day.expense += amt
+          totalExpense += amt
+          expenseMap.set(
+            cat, (expenseMap.get(cat) ?? 0) + amt
+          )
+        } else if (type === 'debt_payment') {
+          day.debt_payment += amt
+          totalDebt += amt
+        }
+      }
+    }
+
+    activeDays = activeDaySet.size || 1
+    const totalProfit =
+      totalIncome - totalExpense - totalDebt
+
+    // Daily breakdown array
+    const daily = Array.from(dailyMap.entries()).map(
+      ([d, v]) => {
+        const dayDate = new Date(d)
+        return {
+          date: d,
+          day_name: DAY_NAMES[dayDate.getDay()],
+          income: v.income,
+          expense: v.expense,
+          debt_payment: v.debt_payment,
+          profit: v.income - v.expense - v.debt_payment,
+          transaction_count: v.count,
+        }
+      }
+    )
+
+    // Top expense categories
+    const topExpenses = Array.from(
+      expenseMap.entries()
+    )
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cat, total]) => {
+        const meta = EXPENSE_CATEGORIES[cat] ?? {
+          emoji: '\ud83d\udce6', label: cat,
+        }
+        const pct = totalExpense > 0
+          ? Math.round((total / totalExpense) * 100)
+          : 0
+        return {
+          category: cat,
+          emoji: meta.emoji,
+          label: meta.label,
+          total,
+          percentage: pct,
+        }
+      })
+
+    // Income breakdown
+    const incomeBreakdown = Array.from(
+      incomeMap.entries()
+    )
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([cat, data]) => {
+        const meta = INCOME_CATEGORIES[cat] ?? {
+          emoji: '\ud83d\udce6', label: cat,
+        }
+        return {
+          category: cat,
+          emoji: meta.emoji,
+          label: meta.label,
+          total: data.total,
+          count: data.count,
+        }
+      })
+
+    // Previous week totals
+    let prevIncome = 0
+    let prevExpense = 0
+    let prevDebt = 0
+    for (const r of prevRows) {
+      const amt = Number(r.amount) || 0
+      const type = String(r.type)
+      if (type === 'income') prevIncome += amt
+      else if (type === 'expense') prevExpense += amt
+      else if (type === 'debt_payment') prevDebt += amt
+    }
+    const prevProfit = prevIncome - prevExpense - prevDebt
+
+    const calcTrend = (
+      curr: number, prev: number
+    ): number => {
+      if (prev === 0) return curr > 0 ? 100 : 0
+      return Math.round(
+        ((curr - prev) / prev) * 100
+      )
+    }
+
+    return c.json<ApiResponse<unknown>>({
+      success: true,
+      data: {
+        week_start: monday,
+        week_end: sunday,
+        active_days: activeDays,
+        summary: {
+          income: totalIncome,
+          expense: totalExpense,
+          debt_payment: totalDebt,
+          profit: totalProfit,
+          transaction_count: rows.length,
+        },
+        averages: {
+          daily_income: Math.round(
+            totalIncome / activeDays
+          ),
+          daily_expense: Math.round(
+            totalExpense / activeDays
+          ),
+          daily_profit: Math.round(
+            totalProfit / activeDays
+          ),
+        },
+        comparison: {
+          prev_week_start: prevMonday,
+          prev_week_end: prevSunday,
+          prev_income: prevIncome,
+          prev_expense: prevExpense,
+          prev_profit: prevProfit,
+          income_trend: calcTrend(
+            totalIncome, prevIncome
+          ),
+          expense_trend: calcTrend(
+            totalExpense, prevExpense
+          ),
+          profit_trend: calcTrend(
+            totalProfit, prevProfit
+          ),
+        },
+        daily,
+        top_expenses: topExpenses,
+        income_breakdown: incomeBreakdown,
+      },
+    })
+  } catch (error) {
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: error instanceof Error
+          ? error.message
+          : 'Server error',
+      },
       500
     )
   }
