@@ -42,7 +42,7 @@ export function Settings() {
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     const res = await apiClient<BudgetData>('/api/settings')
-    if (res.success && res.data) {
+    if (res.success) {
       setData(res.data)
       setEdits({})
     }
@@ -88,7 +88,7 @@ export function Settings() {
       body: JSON.stringify(payload),
     })
 
-    if (res.success && res.data) {
+    if (res.success) {
       setData(res.data)
       setEdits({})
       setSaved(true)
