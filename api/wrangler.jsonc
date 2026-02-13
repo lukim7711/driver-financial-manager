@@ -3,18 +3,17 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-02-13",
   "compatibility_flags": ["nodejs_compat"],
-  
+
   // Durable Objects binding
   "durable_objects": {
     "bindings": [
       {
         "name": "DB",
-        "class_name": "MoneyManagerDB",
-        "script_name": "driver-financial-manager-api"
+        "class_name": "MoneyManagerDB"
       }
     ]
   },
-  
+
   // Migrations for Durable Objects
   "migrations": [
     {
@@ -22,25 +21,10 @@
       "new_classes": ["MoneyManagerDB"]
     }
   ],
-  
+
   // Local development settings
   "dev": {
     "port": 8787,
     "local_protocol": "http"
-  },
-  
-  // Environment-specific configuration
-  "env": {
-    "production": {
-      "vars": {
-        "ENVIRONMENT": "production"
-      },
-      "routes": [
-        {
-          "pattern": "api.driver-finance.pages.dev/*",
-          "zone_name": "driver-finance.pages.dev"
-        }
-      ]
-    }
   }
 }
