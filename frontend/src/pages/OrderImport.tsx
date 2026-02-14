@@ -1,7 +1,10 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import { apiClient } from '../lib/api'
-import { compressImage } from '../lib/compress-image'
+import {
+  compressImage,
+  getImageDimensions,
+} from '../lib/compress-image'
 import { formatRupiah } from '../lib/format'
 import { useToast } from '../components/Toast'
 import { OrderPreview } from '../components/OrderPreview'
@@ -31,6 +34,8 @@ interface BatchResponse {
   transaction_id: string | null
 }
 
+const MIN_WIDTH = 500
+
 export function OrderImport() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -53,6 +58,19 @@ export function OrderImport() {
     if (!validTypes.includes(file.type)) {
       toast.error('Format: JPG, PNG, atau WebP')
       return
+    }
+
+    // Check image dimensions
+    try {
+      const dims = await getImageDimensions(file)
+      if (dims.width < MIN_WIDTH) {
+        toast.error(
+          `Gambar terlalu kecil (${dims.width}px). Gunakan screenshot asli, bukan dari Telegram/WhatsApp.`
+        )
+        return
+      }
+    } catch {
+      // proceed anyway
     }
 
     const url = URL.createObjectURL(file)
@@ -272,7 +290,8 @@ export function OrderImport() {
                 dari aplikasi Shopee
               </p>
               <p className="text-xs text-gray-400">
-                App akan otomatis baca semua order
+                Gunakan screenshot asli (bukan dari
+                Telegram/WhatsApp)
               </p>
             </div>
 

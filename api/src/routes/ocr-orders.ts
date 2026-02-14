@@ -38,8 +38,7 @@ function parseDate(text: string): string | null {
   const monthKey = (m[2] ?? '').toLowerCase().slice(0, 3)
   const month = MONTH_MAP[monthKey]
   if (!month) return null
-  const year = m[3]
-  return `${year}-${month}-${day}`
+  return `${m[3] ?? '2026'}-${month}-${day}`
 }
 
 function detectPlatform(
@@ -49,7 +48,9 @@ function detectPlatform(
   if (
     lower.includes('shopeefood') ||
     lower.includes('shopee food') ||
-    lower.includes('shopee\nfood')
+    lower.includes('shopee\nfood') ||
+    lower.includes('shope food') ||
+    lower.includes('shopéefood')
   ) {
     return { platform: 'shopeefood', label: 'ShopeeFood' }
   }
@@ -81,32 +82,65 @@ function cleanOcrNumber(raw: string): number {
   return parseInt(cleaned, 10) || 0
 }
 
-function extractAmount(text: string): number {
-  const patterns = [
-    /[Rr][Pp]\s?([\d.,\s]+\d)/g,
-    /[Rr][Pp]([\d.,\s]+\d)/g,
-  ]
-  let best = 0
-  for (const re of patterns) {
-    let match: RegExpExecArray | null
-    while ((match = re.exec(text)) !== null) {
-      const num = cleanOcrNumber(match[1] ?? '0')
-      if (num >= 1000 && num <= 500000 && num > best) {
-        best = num
-      }
+function extractAmountFromLine(
+  text: string
+): number {
+  const re = /[Rr][Pp]\s?([\d.,\s]+\d)/g
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    const num = cleanOcrNumber(match[1] ?? '0')
+    if (num >= 1000 && num <= 500000) {
+      return num
     }
   }
-  if (best === 0) {
-    const fallback = /([\d.]{4,})/g
+  return 0
+}
+
+function findAmountNearby(
+  lines: string[],
+  timeLineIdx: number
+): number {
+  // Check same line first (time line often has Rp)
+  const sameLine = extractAmountFromLine(
+    lines[timeLineIdx] ?? ''
+  )
+  if (sameLine > 0) return sameLine
+
+  // Check lines ABOVE time (Rp often on previous line)
+  for (
+    let j = timeLineIdx - 1;
+    j >= Math.max(0, timeLineIdx - 2);
+    j--
+  ) {
+    const amt = extractAmountFromLine(lines[j] ?? '')
+    if (amt > 0) return amt
+  }
+
+  // Check lines BELOW time (up to 3 lines)
+  for (
+    let j = timeLineIdx + 1;
+    j <= Math.min(lines.length - 1, timeLineIdx + 3);
+    j++
+  ) {
+    const amt = extractAmountFromLine(lines[j] ?? '')
+    if (amt > 0) return amt
+  }
+
+  // Fallback: look for bare numbers near time line
+  for (
+    let j = Math.max(0, timeLineIdx - 1);
+    j <= Math.min(lines.length - 1, timeLineIdx + 2);
+    j++
+  ) {
+    const bare = /([\d.]{5,})/g
     let m2: RegExpExecArray | null
-    while ((m2 = fallback.exec(text)) !== null) {
+    while ((m2 = bare.exec(lines[j] ?? '')) !== null) {
       const num = cleanOcrNumber(m2[1] ?? '0')
-      if (num >= 5000 && num <= 500000 && num > best) {
-        best = num
-      }
+      if (num >= 5000 && num <= 500000) return num
     }
   }
-  return best
+
+  return 0
 }
 
 function parseOrders(rawText: string): {
@@ -121,6 +155,7 @@ function parseOrders(rawText: string): {
   const orders: DetectedOrder[] = []
   const usedLines = new Set<number>()
 
+  // Match time at start of line: "20:09", "17.04"
   const timeRe = /^(\d{1,2})[:.](\d{2})\b/
 
   for (let i = 0; i < lines.length; i++) {
@@ -128,31 +163,31 @@ function parseOrders(rawText: string): {
     const timeMatch = timeRe.exec(line)
     if (!timeMatch) continue
 
-    const hourNum = parseInt(timeMatch[1] ?? '0', 10)
+    const hourNum = parseInt(
+      timeMatch[1] ?? '0', 10
+    )
     if (hourNum > 23) continue
+    if (usedLines.has(i)) continue
 
     const hour = String(hourNum).padStart(2, '0')
     const min = timeMatch[2] ?? '00'
     const orderTime = `${hour}:${min}`
 
-    const window: string[] = []
-    const windowRange = 4
-    for (
-      let j = Math.max(0, i - 1);
-      j <= Math.min(lines.length - 1, i + windowRange);
-      j++
-    ) {
-      window.push(lines[j] ?? '')
+    // Build context from nearby lines for platform
+    const ctxStart = Math.max(0, i - 1)
+    const ctxEnd = Math.min(lines.length - 1, i + 3)
+    const contextParts: string[] = []
+    for (let j = ctxStart; j <= ctxEnd; j++) {
+      contextParts.push(lines[j] ?? '')
     }
-    const context = window.join(' ')
-
-    const fareAmount = extractAmount(context)
-    if (fareAmount < 1000) continue
+    const context = contextParts.join(' ')
 
     const platformInfo = detectPlatform(context)
     if (!platformInfo) continue
 
-    if (usedLines.has(i)) continue
+    const fareAmount = findAmountNearby(lines, i)
+    if (fareAmount < 1000) continue
+
     usedLines.add(i)
 
     const isCombined =
@@ -191,8 +226,8 @@ route.post('/', async (c) => {
       )
     }
 
-    const contentType = c.req.header('content-type') || ''
-    if (!contentType.includes('multipart/form-data')) {
+    const ct = c.req.header('content-type') || ''
+    if (!ct.includes('multipart/form-data')) {
       return c.json<ApiResponse<never>>(
         { success: false, error: 'Content-Type harus multipart/form-data' },
         400
@@ -224,6 +259,10 @@ route.post('/', async (c) => {
     ocrForm.append('language', 'eng')
     ocrForm.append('isOverlayRequired', 'false')
     ocrForm.append('OCREngine', '2')
+    ocrForm.append('scale', 'true')
+    ocrForm.append(
+      'detectOrientation', 'true'
+    )
 
     const ocrRes = await fetch(
       'https://api.ocr.space/parse/image',
@@ -237,7 +276,9 @@ route.post('/', async (c) => {
       )
     }
 
-    const ocrData = await ocrRes.json() as OcrSpaceResult
+    const ocrData =
+      await ocrRes.json() as OcrSpaceResult
+
     if (ocrData.IsErroredOnProcessing) {
       const msg =
         ocrData.ErrorMessage?.join(', ') || 'OCR gagal'
@@ -247,7 +288,8 @@ route.post('/', async (c) => {
     }
 
     const rawText =
-      ocrData.ParsedResults?.[0]?.ParsedText?.trim() || ''
+      ocrData.ParsedResults?.[0]?.ParsedText?.trim()
+        || ''
 
     if (!rawText) {
       return c.json<ApiResponse<unknown>>({
