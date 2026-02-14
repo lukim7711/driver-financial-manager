@@ -1,7 +1,7 @@
 # 🧭 AI-CONTEXT
 # Money Manager — AI Navigation Map
 
-> **Version:** 5.0  
+> **Version:** 6.0  
 > **Last Updated:** 2026-02-14  
 
 ---
@@ -41,8 +41,10 @@ Cloudflare Workers (Hono API)
    ├── /api/debts             → CRUD hutang + bayar cicilan
    ├── /api/daily-expenses    → CRUD budget harian
    ├── /api/monthly-expenses  → CRUD biaya bulanan
-   ├── /api/report            → Laporan harian/mingguan
-   ├── /api/ocr               → Proxy ke ocr.space
+   ├── /api/report            → Laporan harian/mingguan/bulanan/custom
+   ├── /api/ocr               → Proxy ke ocr.space (struk)
+   ├── /api/ocr/orders        → Parse screenshot Shopee → order list
+   ├── /api/orders/batch      → Batch save orders + income transaction
    ├── /api/settings          → Target date preferences
    └── /api/dashboard         → Aggregate home data + daily target
    │
@@ -51,6 +53,7 @@ Durable Objects (SQLite)
    ├── debts            (pre-loaded + user-created)
    ├── debt_schedule    (pre-loaded + auto-generated)
    ├── transactions     (runtime: user input)
+   ├── orders           (runtime: parsed from Shopee screenshots)
    ├── daily_expenses   (runtime: CRUD budget harian)
    ├── monthly_expenses (runtime: CRUD biaya bulanan)
    └── settings         (runtime: target date)
@@ -79,9 +82,10 @@ Durable Objects (SQLite)
 | `frontend/src/main.tsx` | React entry point |
 | `frontend/src/pages/Home.tsx` | Dashboard: summary + daily target + budget bar + alerts |
 | `frontend/src/pages/QuickInput.tsx` | Tap-based input: type → category → amount → save |
-| `frontend/src/pages/OcrUpload.tsx` | Upload struk foto → OCR → auto-parse |
+| `frontend/src/pages/OcrUpload.tsx` | Upload struk foto → OCR → auto-parse (2-tab: Struk \| Rekap Order) |
+| `frontend/src/pages/OrderImport.tsx` | Upload screenshot Shopee → parse → preview → batch save |
 | `frontend/src/pages/Debts.tsx` | CRUD hutang + progress + bayar cicilan + FAB tambah |
-| `frontend/src/pages/Report.tsx` | Laporan harian/mingguan + riwayat + export CSV |
+| `frontend/src/pages/Report.tsx` | Laporan harian/mingguan/bulanan/custom + riwayat + export CSV |
 | `frontend/src/pages/Settings.tsx` | Target date + CRUD budget harian + CRUD biaya bulanan |
 | `frontend/src/components/DailyTarget.tsx` | Target harian minimal: progress bar + gap + breakdown |
 | `frontend/src/components/SummaryCard.tsx` | Ringkasan pemasukan/pengeluaran/profit hari ini |
@@ -95,8 +99,9 @@ Durable Objects (SQLite)
 | `frontend/src/components/AddDebtForm.tsx` | Bottom sheet form tambah hutang baru |
 | `frontend/src/components/EditDebtDialog.tsx` | Bottom sheet form edit hutang |
 | `frontend/src/components/DeleteDebtDialog.tsx` | Dialog konfirmasi hapus hutang |
-| `frontend/src/components/ExportCsvButton.tsx` | Tombol export CSV (harian & mingguan) |
+| `frontend/src/components/ExportCsvButton.tsx` | Tombol export CSV (harian & mingguan & bulanan) |
 | `frontend/src/components/OnboardingOverlay.tsx` | 5-step walkthrough modal |
+| `frontend/src/components/OrderPreview.tsx` | Preview order list (editable): date, time, platform, fare |
 | `frontend/src/hooks/use-onboarding.ts` | localStorage hook for onboarding state |
 | `frontend/src/hooks/` | useApi, useTransactions, useDebts |
 | `frontend/src/lib/api.ts` | API client base |
@@ -116,7 +121,11 @@ Durable Objects (SQLite)
 | `api/src/routes/daily-expense.ts` | CRUD /api/daily-expenses |
 | `api/src/routes/monthly-expense.ts` | CRUD /api/monthly-expenses |
 | `api/src/routes/report.ts` | GET daily/weekly report |
-| `api/src/routes/ocr.ts` | POST image → ocr.space → parsed result |
+| `api/src/routes/report-monthly.ts` | GET monthly report |
+| `api/src/routes/report-custom.ts` | GET custom date range report |
+| `api/src/routes/ocr.ts` | POST image → ocr.space → parsed receipt |
+| `api/src/routes/ocr-orders.ts` | POST screenshot → ocr.space → parsed Shopee orders |
+| `api/src/routes/orders-batch.ts` | POST batch save orders + income transaction |
 | `api/src/routes/settings.ts` | GET/PUT settings (target date) |
 | `api/src/routes/dashboard.ts` | GET dashboard aggregate + daily target |
 | `api/src/db/durable-object.ts` | DO class: SQLite init, migrations |
@@ -135,6 +144,7 @@ Durable Objects (SQLite)
 - Semua `amount` dalam INTEGER Rupiah (no floating point)
 - Tipe: `income`, `expense`, `debt_payment`
 - Soft delete: set `is_deleted = 1`, never hard delete
+- Source: `manual`, `ocr` (receipt), `ocr_order` (Shopee batch)
 
 ### 5.2 Hutang
 - 5 hutang pre-loaded + user bisa tambah/edit/hapus
@@ -167,6 +177,14 @@ Durable Objects (SQLite)
 - BOM header for Excel compatibility
 - Filename: `laporan-harian-YYYY-MM-DD.csv` atau `laporan-mingguan-YYYY-MM-DD.csv`
 
+### 5.8 Smart Order Import (F-F08)
+- Upload screenshot Shopee "Riwayat Pesanan" → OCR parse → batch save
+- Per order: tanggal, waktu, platform (SPX/ShopeeFood), argo, tipe (single/combined)
+- 1 screenshot = ~8-10 order, multiple screenshots supported (append + dedup)
+- Creates 1 income transaction (total argo) + N rows in `orders` table
+- Duplicate detection: same date + time + fare_amount = skip
+- Data digunakan untuk future AI analysis (Phase 2 & 3)
+
 ---
 
 ## 6. Current Status
@@ -180,6 +198,8 @@ Durable Objects (SQLite)
 | v1.3.1 Budget Harian CRUD + Fix | ✅ SHIPPED |
 | v2.0.0 Onboarding + Refactor DRY | ✅ SHIPPED |
 | v2.1.0 Export CSV | ✅ SHIPPED |
+| v2.3.0 Multi-period Report + Custom Range | ✅ SHIPPED |
+| v2.4.0 Smart Order Import (Phase 1) | ✅ SHIPPED |
 
 ---
 
@@ -192,7 +212,8 @@ Durable Objects (SQLite)
 | F-F03 | AI Learning | Analisis pola penghasilan, prediksi, saran penghematan |
 | F-F04 | Grafik/Chart Visual | Chart pengeluaran per kategori, trend mingguan/bulanan |
 | F-F06 | Notifikasi Proaktif | Push notification H-3 jatuh tempo via service worker |
-| F-F07 | Multi-period Report | Laporan bulanan, custom date range |
+| F-F08-P2 | Order Analytics Dashboard | Statistik order: jam tersibuk, platform, area, rata-rata argo |
+| F-F08-P3 | AI Order Insights | Prediksi pendapatan, saran optimasi, pola kerja |
 
 ---
 
@@ -206,3 +227,4 @@ Durable Objects (SQLite)
 | 4.0 | 2026-02-14 | F012+F013+F014 shipped |
 | 4.1 | 2026-02-14 | Budget harian CRUD: daily_expenses table, separated BudgetBar from prorate |
 | 5.0 | 2026-02-14 | v2.1.0: Export CSV, Onboarding, DRY refactor, updated file map + business rules |
+| 6.0 | 2026-02-14 | v2.4.0: Smart Order Import (F-F08), orders table, OCR order parsing, batch save |

@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 07:27 WIB
+> Last Updated: 2026-02-14 08:14 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F-F07 Custom Date Range Report
+- **Fase:** F-F08 Smart Order Import (Phase 1)
 - **Status:** ✅ DONE
-- **Commit:** Squash-merged [#21](https://github.com/lukim7711/driver-financial-manager/pull/21)
-- **Catatan:** Tab ke-4 "Custom" di Laporan — pilih rentang tanggal bebas dengan preset 7/14/30 hari & Bulan Ini.
+- **Commit:** Squash-merged [#22](https://github.com/lukim7711/driver-financial-manager/pull/22)
+- **Catatan:** Upload screenshot Riwayat Pesanan Shopee → OCR parse → batch save sebagai pemasukan + data order terstruktur untuk future AI analysis.
 
 ---
 
-## 🏆 STATUS: v2.3.0 — Custom Date Range
+## 🏆 STATUS: v2.4.0 — Smart Order Import
 
 ### Infrastructure
 
@@ -57,6 +57,7 @@
 | F-F05 | Export CSV | ✅ DONE | main |
 | F-F07 | Multi-period Report (Bulanan) | ✅ DONE | [#20](https://github.com/lukim7711/driver-financial-manager/pull/20) |
 | F-F07b | Custom Date Range Report | ✅ DONE | [#21](https://github.com/lukim7711/driver-financial-manager/pull/21) |
+| F-F08 | Smart Order Import (Phase 1) | ✅ DONE | [#22](https://github.com/lukim7711/driver-financial-manager/pull/22) |
 
 ### Bugfixes
 
@@ -98,10 +99,13 @@
 | F-F05 | Export CSV | ✅ DONE |
 | F-F06 | Notifikasi Proaktif | ⏳ Backlog |
 | F-F07 | Multi-period Report + Custom Range | ✅ DONE |
+| F-F08 | Smart Order Import (Phase 1) | ✅ DONE |
+| F-F08-P2 | Order Analytics Dashboard | ⏳ Backlog |
+| F-F08-P3 | AI Insights (pola, prediksi, saran) | ⏳ Backlog |
 
 ---
 
-## API v2.3.0 — 24 Endpoints
+## API v2.4.0 — 26 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -117,6 +121,8 @@
 | `/api/report/monthly` | GET | F-F07 |
 | `/api/report/custom` | GET | F-F07b |
 | `/api/ocr` | POST | F002 |
+| `/api/ocr/orders` | POST | F-F08 |
+| `/api/orders/batch` | POST | F-F08 |
 | `/api/settings` | GET, PUT | Settings + F014 |
 | `/api/monthly-expenses` | GET, POST | F013 |
 | `/api/monthly-expenses/:id` | PUT, DELETE | F013 |
@@ -126,6 +132,34 @@
 ---
 
 ## Session Log
+
+### Session 27 — 2026-02-14 08:03–08:14 WIB
+
+**Fase:** F-F08 Smart Order Import (Phase 1)
+
+**Implemented:**
+1. `api/src/routes/ocr-orders.ts` — POST /api/ocr/orders (parse Shopee screenshot)
+2. `api/src/routes/orders-batch.ts` — POST /api/orders/batch (batch save + income)
+3. `api/src/db/schema.ts` — New `orders` table + indexes
+4. `frontend/src/pages/OrderImport.tsx` — Full order import page
+5. `frontend/src/components/OrderPreview.tsx` — Editable order list + total
+6. Updated `OcrUpload.tsx` — 2-tab switcher (Struk | Rekap Order)
+7. Updated `App.tsx` — /order-import route
+8. Feature spec: `docs/features/F-F08-smart-order-import.md`
+
+**Technical decisions:**
+- Separate OCR parser for Shopee format (regex for Indonesian month, time, Rp amount)
+- Platform detection: SPX Instant, SPX Sameday, SPX Standard, ShopeeFood
+- Order type: "Pesanan Gabungan" = combined, else single
+- Batch save creates 1 income transaction + N order rows (linked by transaction_id)
+- Duplicate detection: same date+time+fare_amount = skip
+- Multiple screenshot support: append + client-side dedup
+- Transaction source: `ocr_order` (distinct from `ocr` for receipt scan)
+
+**Bug fixed:**
+- TS2339: `ApiResponse` discriminated union — must check `res.success` before accessing `.error`
+
+**Result:** CI ✅ → Squash-merged ([#22](https://github.com/lukim7711/driver-financial-manager/pull/22))
 
 ### Session 26 — 2026-02-14 07:22–07:27 WIB
 
@@ -305,6 +339,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 07:27 WIB
-- **Total Sessions:** 26
-- **Current Phase:** v2.3.0 — Custom Date Range
+- **Last Updated:** 2026-02-14 08:14 WIB
+- **Total Sessions:** 27
+- **Current Phase:** v2.4.0 — Smart Order Import
