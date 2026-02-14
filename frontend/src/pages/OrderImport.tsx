@@ -44,6 +44,7 @@ export function OrderImport() {
   const [date, setDate] = useState('')
   const [orders, setOrders] = useState<DetectedOrder[]>([])
   const [hasResult, setHasResult] = useState(false)
+  const [debugText, setDebugText] = useState('')
 
   const handleFile = async (file: File) => {
     const validTypes = [
@@ -63,8 +64,10 @@ export function OrderImport() {
       const formData = new FormData()
       formData.append('file', compressed)
 
+      const apiBase =
+        import.meta.env.VITE_API_URL || ''
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8787'}/api/ocr/orders`,
+        `${apiBase}/api/ocr-orders`,
         { method: 'POST', body: formData }
       )
       const json = await res.json() as {
@@ -75,9 +78,12 @@ export function OrderImport() {
 
       if (json.success && json.data) {
         const d = json.data
+        setDebugText(d.raw_text || '')
+
         if (d.orders.length === 0) {
           toast.error(
-            d.message || 'Tidak ada order terdeteksi'
+            d.message ||
+            'Tidak ada order terdeteksi. Pastikan screenshot Riwayat Pesanan Shopee.'
           )
           setProcessing(false)
           return
@@ -174,6 +180,7 @@ export function OrderImport() {
     setDate('')
     setPreviews([])
     setHasResult(false)
+    setDebugText('')
   }
 
   return (
@@ -241,6 +248,18 @@ export function OrderImport() {
               {'\u2795'} Tambah Screenshot
             </button>
           </>
+        )}
+
+        {/* Debug: show raw OCR text */}
+        {debugText && !processing && orders.length === 0 && (
+          <div className="rounded-xl bg-gray-100 p-3 border border-gray-200">
+            <p className="text-xs font-semibold text-gray-500 mb-1">
+              {'\ud83d\udd0d'} Teks OCR (debug):
+            </p>
+            <pre className="text-xs text-gray-600 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+              {debugText}
+            </pre>
+          </div>
         )}
 
         {/* Upload area */}

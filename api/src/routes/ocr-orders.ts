@@ -43,10 +43,14 @@ function parseDate(text: string): string | null {
 }
 
 function detectPlatform(
-  line: string
+  text: string
 ): { platform: string; label: string } | null {
-  const lower = line.toLowerCase()
-  if (lower.includes('shopeefood') || lower.includes('shopee food')) {
+  const lower = text.toLowerCase()
+  if (
+    lower.includes('shopeefood') ||
+    lower.includes('shopee food') ||
+    lower.includes('shopee\nfood')
+  ) {
     return { platform: 'shopeefood', label: 'ShopeeFood' }
   }
   if (lower.includes('spx instant')) {
@@ -58,53 +62,98 @@ function detectPlatform(
   if (lower.includes('spx standard')) {
     return { platform: 'spx_standard', label: 'SPX Standard' }
   }
-  if (lower.includes('spx')) {
+  if (
+    lower.includes('spx') ||
+    lower.includes('marketplace')
+  ) {
     return { platform: 'spx_instant', label: 'SPX Instant' }
   }
   return null
+}
+
+function cleanOcrNumber(raw: string): number {
+  const cleaned = raw
+    .replace(/[oO]/g, '0')
+    .replace(/[lI]/g, '1')
+    .replace(/\s/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+  return parseInt(cleaned, 10) || 0
+}
+
+function extractAmount(text: string): number {
+  const patterns = [
+    /[Rr][Pp]\s?([\d.,\s]+\d)/g,
+    /[Rr][Pp]([\d.,\s]+\d)/g,
+  ]
+  let best = 0
+  for (const re of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = re.exec(text)) !== null) {
+      const num = cleanOcrNumber(match[1] ?? '0')
+      if (num >= 1000 && num <= 500000 && num > best) {
+        best = num
+      }
+    }
+  }
+  if (best === 0) {
+    const fallback = /([\d.]{4,})/g
+    let m2: RegExpExecArray | null
+    while ((m2 = fallback.exec(text)) !== null) {
+      const num = cleanOcrNumber(m2[1] ?? '0')
+      if (num >= 5000 && num <= 500000 && num > best) {
+        best = num
+      }
+    }
+  }
+  return best
 }
 
 function parseOrders(rawText: string): {
   date: string | null
   orders: DetectedOrder[]
 } {
-  const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean)
+  const lines = rawText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
   const detectedDate = parseDate(rawText)
   const orders: DetectedOrder[] = []
+  const usedLines = new Set<number>()
 
-  const timeRe = /\b(\d{1,2})[:.](\d{2})\b/
-  const amountRe = /Rp\s?([\d.,]+)/i
+  const timeRe = /^(\d{1,2})[:.](\d{2})\b/
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? ''
     const timeMatch = timeRe.exec(line)
     if (!timeMatch) continue
 
-    const hour = String(timeMatch[1]).padStart(2, '0')
+    const hourNum = parseInt(timeMatch[1] ?? '0', 10)
+    if (hourNum > 23) continue
+
+    const hour = String(hourNum).padStart(2, '0')
     const min = timeMatch[2] ?? '00'
     const orderTime = `${hour}:${min}`
 
-    let fareAmount = 0
-    const amountMatch = amountRe.exec(line)
-    if (amountMatch) {
-      fareAmount = parseInt(
-        (amountMatch[1] ?? '0')
-          .replace(/\./g, '')
-          .replace(/,/g, ''),
-        10
-      )
+    const window: string[] = []
+    const windowRange = 4
+    for (
+      let j = Math.max(0, i - 1);
+      j <= Math.min(lines.length - 1, i + windowRange);
+      j++
+    ) {
+      window.push(lines[j] ?? '')
     }
+    const context = window.join(' ')
 
-    if (fareAmount < 1000 || fareAmount > 500000) continue
-
-    const context = [
-      lines[i - 1] ?? '',
-      line,
-      lines[i + 1] ?? '',
-    ].join(' ')
+    const fareAmount = extractAmount(context)
+    if (fareAmount < 1000) continue
 
     const platformInfo = detectPlatform(context)
     if (!platformInfo) continue
+
+    if (usedLines.has(i)) continue
+    usedLines.add(i)
 
     const isCombined =
       context.toLowerCase().includes('gabungan')
@@ -131,8 +180,8 @@ function isBlobLike(value: unknown): value is Blob {
   )
 }
 
-// POST /api/ocr/orders
-route.post('/orders', async (c) => {
+// POST /api/ocr-orders
+route.post('/', async (c) => {
   try {
     const apiKey = c.env.OCR_SPACE_API_KEY
     if (!apiKey) {
@@ -190,7 +239,8 @@ route.post('/orders', async (c) => {
 
     const ocrData = await ocrRes.json() as OcrSpaceResult
     if (ocrData.IsErroredOnProcessing) {
-      const msg = ocrData.ErrorMessage?.join(', ') || 'OCR gagal'
+      const msg =
+        ocrData.ErrorMessage?.join(', ') || 'OCR gagal'
       return c.json<ApiResponse<never>>(
         { success: false, error: msg }, 502
       )
@@ -208,7 +258,8 @@ route.post('/orders', async (c) => {
           orders: [],
           total_fare: 0,
           order_count: 0,
-          message: 'Gambar tidak terbaca. Coba screenshot lebih jelas.',
+          message:
+            'Gambar tidak terbaca. Coba screenshot lebih jelas.',
         },
       })
     }
@@ -232,7 +283,8 @@ route.post('/orders', async (c) => {
     return c.json<ApiResponse<never>>({
       success: false,
       error: error instanceof Error
-        ? error.message : 'Server error',
+        ? error.message
+        : 'Server error',
     }, 500)
   }
 })

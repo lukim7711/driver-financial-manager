@@ -48,7 +48,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '2.4.0',
+      version: '2.4.1',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -63,7 +63,7 @@ app.route('/api/report', reportRoute)
 app.route('/api/report', reportMonthlyRoute)
 app.route('/api/report', reportCustomRoute)
 app.route('/api/ocr', ocrRoute)
-app.route('/api/ocr', ocrOrdersRoute)
+app.route('/api/ocr-orders', ocrOrdersRoute)
 app.route('/api/orders', ordersBatchRoute)
 app.route('/api/settings', settingsRoute)
 app.route('/api/monthly-expenses', monthlyExpenseRoute)
