@@ -1,26 +1,26 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 10:11 WIB
+> Last Updated: 2026-02-14 10:43 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F016 Hari Libur (Rest Days)
+- **Fase:** Bugfix — Hapus Pembayaran Hutang
 - **Status:** ✅ DONE
-- **Commit:** Squash-merged [#23](https://github.com/lukim7711/driver-financial-manager/pull/23)
-- **Catatan:** Toggle hari libur mingguan di Settings. Target hutang harian dihitung berdasarkan hari kerja saja. Dashboard tampilkan banner hari libur + bonus display.
+- **Commit:** Squash-merged [#24](https://github.com/lukim7711/driver-financial-manager/pull/24)
+- **Catatan:** debt_payment transaksi sekarang bisa dihapus. Reverse logic mengembalikan sisa hutang. Handle orphan payments (hutang sudah dihapus).
 
 ---
 
-## 🏆 STATUS: v2.5.0 — Rest Days
+## 🏆 STATUS: v2.5.1 — Debt Payment Delete Fix
 
 ### Infrastructure
 
 | ID | Nama | Status | PR |
-|----|------|--------|----|
+|----|------|--------|---|
 | SETUP | Project Setup | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
 | CD | GitHub Actions Deploy | ✅ DONE | main |
 | CI/CD-FIX | CD waits for CI pass | ✅ DONE | main |
@@ -29,7 +29,7 @@
 ### MVP Features (8/8 MUST — ALL DONE)
 
 | ID | Nama | Status | PR |
-|----|------|--------|----|
+|----|------|--------|---|
 | F001 | Quick-Tap Input Transaksi | ✅ DONE | [#3](https://github.com/lukim7711/driver-financial-manager/pull/3) |
 | F002 | Upload Struk OCR | ✅ DONE | [#7](https://github.com/lukim7711/driver-financial-manager/pull/7) |
 | F003 | Pre-loaded Data Hutang | ✅ DONE | [#2](https://github.com/lukim7711/driver-financial-manager/pull/2) |
@@ -71,11 +71,12 @@
 | ONBOARD-FIX | Emoji escape + refresh restyle | ✅ DONE | main |
 | CONFIRM-DEL | Confirm dialog di Settings delete | ✅ DONE | main |
 | OCR-FIX2 | Quality-first compression + smarter order parsing | ✅ DONE | main |
+| DEBT-PAY-DEL | Hapus pembayaran hutang + reverse logic | ✅ DONE | [#24](https://github.com/lukim7711/driver-financial-manager/pull/24) |
 
 ### Refactor / DX
 
 | ID | Nama | Status | PR |
-|----|------|--------|----|
+|----|------|--------|---|
 | DRY-TYPES | Unify shared types (single source of truth) | ✅ DONE | [#18](https://github.com/lukim7711/driver-financial-manager/pull/18) |
 | DRY-UTILS | Extract shared API utils (db, date, id) | ✅ DONE | [#18](https://github.com/lukim7711/driver-financial-manager/pull/18) |
 | PATH-ALIAS | tsconfig @/ and @shared/ aliases | ✅ DONE | main |
@@ -83,7 +84,7 @@
 ### Bonus
 
 | ID | Nama | Status | PR |
-|----|------|--------|----|
+|----|------|--------|---|
 | Settings | Budget per Kategori | ✅ DONE | [#8](https://github.com/lukim7711/driver-financial-manager/pull/8) |
 | PWA | Manifest + SW + Cache | ✅ DONE | [#8](https://github.com/lukim7711/driver-financial-manager/pull/8) |
 | Deploy | CD via GitHub Actions | ✅ DONE | main |
@@ -107,12 +108,12 @@
 
 ---
 
-## API v2.5.0 — 26 Endpoints
+## API v2.5.1 — 26 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
 | `/api/transactions` | POST, GET | F001 |
-| `/api/transactions/:id` | PUT, DELETE | F007 |
+| `/api/transactions/:id` | PUT, DELETE | F007 + DEBT-PAY-DEL |
 | `/api/dashboard` | GET | F004 + DT001 + F016 |
 | `/api/debts` | GET, POST | F005 + F012 + F015v4 |
 | `/api/debts/:id` | PUT, DELETE | F012 |
@@ -134,6 +135,29 @@
 ---
 
 ## Session Log
+
+### Session 29 — 2026-02-14 10:38–10:43 WIB
+
+**Fase:** Bugfix — Hapus Pembayaran Hutang (DEBT-PAY-DEL)
+
+**Problem:**
+Ketika user menghapus hutang yang sudah ada pembayarannya, transaksi `debt_payment` jadi orphan — tidak bisa dihapus dari mana pun:
+- Backend PUT + DELETE return 403 untuk `debt_payment`
+- Frontend menampilkan read-only dialog tanpa tombol hapus
+- Hutang sudah dihapus → tidak bisa kelola dari halaman Hutang
+
+**Fixed:**
+1. `api/src/routes/transaction.ts` — DELETE endpoint izinkan `debt_payment`, reverse debt `total_remaining`, reverse schedule status
+2. `frontend/src/components/EditTransaction.tsx` — Tombol "🗑️ Hapus Pembayaran" + confirm dialog dengan warning reverse amount
+
+**Behavior:**
+| Scenario | Hapus | Reverse Hutang |
+|----------|-------|----------------|
+| Hutang masih ada | ✅ | ✅ +amount ke remaining |
+| Hutang sudah dihapus | ✅ | ❌ no-op |
+| Edit nominal | ❌ 403 | N/A |
+
+**Result:** CI ✅ → Squash-merged ([#24](https://github.com/lukim7711/driver-financial-manager/pull/24))
 
 ### Session 28 — 2026-02-14 09:58–10:11 WIB
 
@@ -364,6 +388,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 10:11 WIB
-- **Total Sessions:** 28
-- **Current Phase:** v2.5.0 — Rest Days
+- **Last Updated:** 2026-02-14 10:43 WIB
+- **Total Sessions:** 29
+- **Current Phase:** v2.5.1 — Debt Payment Delete Fix
