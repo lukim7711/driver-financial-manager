@@ -5,6 +5,7 @@ interface DailyTargetProps {
   earnedToday: number
   gap: number
   isOnTrack: boolean
+  isRestDay: boolean
   breakdown: {
     dailyExpense: number
     proratedMonthly: number
@@ -12,6 +13,7 @@ interface DailyTargetProps {
     daysInMonth: number
   }
   daysRemaining: number
+  workingDaysRemaining: number
 }
 
 export function DailyTarget({
@@ -19,12 +21,59 @@ export function DailyTarget({
   earnedToday,
   gap,
   isOnTrack,
+  isRestDay,
   breakdown,
   daysRemaining,
+  workingDaysRemaining,
 }: DailyTargetProps) {
+  // === REST DAY VIEW ===
+  if (isRestDay) {
+    return (
+      <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 space-y-3">
+        <div className="text-center space-y-1">
+          <p className="text-3xl">
+            {'\ud83c\udf19'}
+          </p>
+          <p className="text-lg font-bold text-indigo-700">
+            Hari Libur
+          </p>
+          <p className="text-sm text-indigo-400">
+            Istirahat yang cukup!
+          </p>
+        </div>
+
+        {earnedToday > 0 && (
+          <div className="rounded-xl bg-emerald-100 px-3 py-2 text-center">
+            <p className="text-sm font-bold text-emerald-700">
+              {'\ud83c\udf89'} Bonus hari ini:{' '}
+              {formatRupiah(earnedToday)}
+            </p>
+            <p className="text-xs text-emerald-500">
+              Pemasukan ini mengurangi target
+              hari kerja berikutnya
+            </p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2">
+          <span className="text-xs text-gray-500">
+            {'\u23f3'} Sisa hari ke target
+          </span>
+          <span className="text-xs font-bold text-gray-600">
+            {daysRemaining} hari
+            ({workingDaysRemaining} hari kerja)
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  // === WORKING DAY VIEW ===
   const pctEarned = targetAmount > 0
     ? Math.min(
-        Math.round((earnedToday / targetAmount) * 100),
+        Math.round(
+          (earnedToday / targetAmount) * 100
+        ),
         100
       )
     : 0
@@ -38,10 +87,10 @@ export function DailyTarget({
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-600">
-          🎯 Target Hari Ini
+          {'\ud83c\udfaf'} Target Hari Ini
         </span>
         <span className="text-xs text-gray-400">
-          {daysRemaining} hari lagi
+          {workingDaysRemaining} hari kerja lagi
         </span>
       </div>
 
@@ -90,8 +139,8 @@ export function DailyTarget({
           : 'bg-red-100 text-red-700'
       }`}>
         {isOnTrack
-          ? `✅ Surplus ${formatRupiah(gap)}`
-          : `⚠️ Kurang ${formatRupiah(Math.abs(gap))}`
+          ? `\u2705 Surplus ${formatRupiah(gap)}`
+          : `\u26a0\ufe0f Kurang ${formatRupiah(Math.abs(gap))}`
         }
       </div>
 
@@ -101,24 +150,34 @@ export function DailyTarget({
           Rincian target:
         </p>
         <div className="flex justify-between text-xs text-gray-500">
-          <span>💸 Pengeluaran harian</span>
-          <span>{formatRupiah(breakdown.dailyExpense)}</span>
+          <span>
+            {'\ud83d\udcb8'} Pengeluaran harian
+          </span>
+          <span>
+            {formatRupiah(breakdown.dailyExpense)}
+          </span>
         </div>
         {breakdown.proratedMonthly > 0 && (
           <div className="flex justify-between text-xs text-gray-500">
             <span>
-              🏠 Bulanan ÷ {breakdown.daysInMonth}
+              {'\ud83c\udfe0'} Bulanan \u00f7{' '}
+              {breakdown.daysInMonth}
             </span>
             <span>
-              {formatRupiah(breakdown.proratedMonthly)}
+              {formatRupiah(
+                breakdown.proratedMonthly
+              )}
             </span>
           </div>
         )}
         <div className="flex justify-between text-xs text-gray-500">
           <span>
-            💳 Hutang ÷ {daysRemaining} hari
+            {'\ud83d\udcb3'} Hutang \u00f7{' '}
+            {workingDaysRemaining} hari kerja
           </span>
-          <span>{formatRupiah(breakdown.dailyDebt)}</span>
+          <span>
+            {formatRupiah(breakdown.dailyDebt)}
+          </span>
         </div>
       </div>
     </div>

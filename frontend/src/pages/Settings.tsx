@@ -9,6 +9,7 @@ import type { MonthlyExpense, DailyExpense } from '../types'
 
 interface SettingsData {
   debt_target_date: string
+  rest_days: string
 }
 
 interface ListResponse<T> {
@@ -23,6 +24,16 @@ interface DeleteTarget {
   amount: number
   type: 'daily' | 'monthly'
 }
+
+const DAY_LABELS = [
+  { day: 1, label: 'Sen' },
+  { day: 2, label: 'Sel' },
+  { day: 3, label: 'Rab' },
+  { day: 4, label: 'Kam' },
+  { day: 5, label: 'Jum' },
+  { day: 6, label: 'Sab' },
+  { day: 0, label: 'Min' },
+]
 
 const DAILY_EMOJI_OPTIONS = [
   '\u26fd', '\ud83c\udf5c', '\ud83d\udead', '\ud83d\udcf1', '\ud83c\udd7f\ufe0f', '\ud83d\udd27', '\ud83d\ude97',
@@ -61,19 +72,54 @@ function getDaysFromNow(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 }
 
+function parseRestDays(raw: string): Set<number> {
+  if (!raw || raw.trim() === '') return new Set()
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n) && n >= 0 && n <= 6)
+  )
+}
+
+function restDaysToString(days: Set<number>): string {
+  return Array.from(days).sort().join(',')
+}
+
 export function Settings() {
   const toast = useToast()
   const navigate = useNavigate()
-  const [targetDate, setTargetDate] = useState('2026-04-13')
-  const [editDate, setEditDate] = useState<string | null>(null)
+  const [targetDate, setTargetDate] = useState(
+    '2026-04-13'
+  )
+  const [editDate, setEditDate] = useState<
+    string | null
+  >(null)
   const [loading, setLoading] = useState(true)
 
-  const [dailyItems, setDailyItems] = useState<DailyExpense[]>([])
+  // Rest days
+  const [restDays, setRestDays] = useState<Set<number>>(
+    new Set([0])
+  )
+  const [savedRestDays, setSavedRestDays] = useState(
+    '0'
+  )
+  const [savingRest, setSavingRest] = useState(false)
+
+  const [dailyItems, setDailyItems] = useState<
+    DailyExpense[]
+  >([])
   const [dailyTotal, setDailyTotal] = useState(0)
-  const [showAddDaily, setShowAddDaily] = useState(false)
+  const [showAddDaily, setShowAddDaily] = useState(
+    false
+  )
   const [newDailyName, setNewDailyName] = useState('')
-  const [newDailyEmoji, setNewDailyEmoji] = useState('\ud83d\udce6')
-  const [newDailyAmount, setNewDailyAmount] = useState('')
+  const [newDailyEmoji, setNewDailyEmoji] = useState(
+    '\ud83d\udce6'
+  )
+  const [newDailyAmount, setNewDailyAmount] = useState(
+    ''
+  )
   const [dailyEdits, setDailyEdits] = useState<
     Record<string, string>
   >({})
@@ -83,17 +129,28 @@ export function Settings() {
     MonthlyExpense[]
   >([])
   const [monthlyTotal, setMonthlyTotal] = useState(0)
-  const [showAddMonthly, setShowAddMonthly] = useState(false)
-  const [newMonthlyName, setNewMonthlyName] = useState('')
-  const [newMonthlyEmoji, setNewMonthlyEmoji] = useState('\ud83d\udce6')
-  const [newMonthlyAmount, setNewMonthlyAmount] = useState('')
+  const [showAddMonthly, setShowAddMonthly] = useState(
+    false
+  )
+  const [newMonthlyName, setNewMonthlyName] = useState(
+    ''
+  )
+  const [newMonthlyEmoji, setNewMonthlyEmoji] =
+    useState('\ud83d\udce6')
+  const [newMonthlyAmount, setNewMonthlyAmount] =
+    useState('')
   const [monthlyEdits, setMonthlyEdits] = useState<
     Record<string, string>
   >({})
-  const [savingMonthly, setSavingMonthly] = useState(false)
+  const [savingMonthly, setSavingMonthly] = useState(
+    false
+  )
 
-  const [savingTarget, setSavingTarget] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [savingTarget, setSavingTarget] = useState(
+    false
+  )
+  const [deleteTarget, setDeleteTarget] =
+    useState<DeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const fetchAll = useCallback(async () => {
@@ -110,8 +167,12 @@ export function Settings() {
       ])
     if (settingsRes.success && settingsRes.data) {
       setTargetDate(
-        settingsRes.data.debt_target_date || '2026-04-13'
+        settingsRes.data.debt_target_date ||
+          '2026-04-13'
       )
+      const rd = settingsRes.data.rest_days ?? '0'
+      setSavedRestDays(rd)
+      setRestDays(parseRestDays(rd))
     } else if (!settingsRes.success) {
       toast.error(settingsRes.error)
     }
@@ -133,6 +194,42 @@ export function Settings() {
   const handleShowGuide = () => {
     localStorage.removeItem('onboarding_completed')
     void navigate('/')
+  }
+
+  // === Rest days ===
+  const handleToggleRestDay = (day: number) => {
+    setRestDays((prev) => {
+      const next = new Set(prev)
+      if (next.has(day)) {
+        next.delete(day)
+      } else {
+        next.add(day)
+      }
+      return next
+    })
+  }
+
+  const restDaysChanged =
+    restDaysToString(restDays) !== savedRestDays
+
+  const handleSaveRestDays = async () => {
+    if (savingRest) return
+    setSavingRest(true)
+    const value = restDaysToString(restDays)
+    const res = await apiClient<SettingsData>(
+      '/api/settings',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ rest_days: value }),
+      }
+    )
+    if (res.success) {
+      setSavedRestDays(value)
+      toast.success('Hari libur tersimpan')
+    } else if (!res.success) {
+      toast.error(res.error)
+    }
+    setSavingRest(false)
   }
 
   // === Target date ===
@@ -186,7 +283,9 @@ export function Settings() {
     )
     if (res.success && res.data) {
       setDailyItems((prev) => [...prev, res.data!])
-      setDailyTotal((prev) => prev + res.data!.amount)
+      setDailyTotal(
+        (prev) => prev + res.data!.amount
+      )
       setNewDailyName('')
       setNewDailyEmoji('\ud83d\udce6')
       setNewDailyAmount('')
@@ -202,10 +301,15 @@ export function Settings() {
     id: string,
     value: string
   ) => {
-    setDailyEdits((prev) => ({ ...prev, [id]: value }))
+    setDailyEdits((prev) => ({
+      ...prev,
+      [id]: value,
+    }))
   }
 
-  const handleSaveDailyAmount = async (id: string) => {
+  const handleSaveDailyAmount = async (
+    id: string
+  ) => {
     const val = dailyEdits[id]
     if (val === undefined) return
     const amount = parseInt(val, 10)
@@ -228,7 +332,8 @@ export function Settings() {
         )
       )
       const newTotal = dailyItems.reduce(
-        (s, i) => s + (i.id === id ? amount : i.amount),
+        (s, i) =>
+          s + (i.id === id ? amount : i.amount),
         0
       )
       setDailyTotal(newTotal)
@@ -250,12 +355,16 @@ export function Settings() {
       { method: 'DELETE' }
     )
     if (res.success) {
-      const removed = dailyItems.find((i) => i.id === id)
+      const removed = dailyItems.find(
+        (i) => i.id === id
+      )
       setDailyItems((prev) =>
         prev.filter((i) => i.id !== id)
       )
       if (removed) {
-        setDailyTotal((prev) => prev - removed.amount)
+        setDailyTotal(
+          (prev) => prev - removed.amount
+        )
       }
       toast.success('Budget dihapus')
     } else if (!res.success) {
@@ -264,14 +373,18 @@ export function Settings() {
     setSavingDaily(false)
   }
 
-  const getDailyAmount = (item: DailyExpense): string => {
-    if (item.id in dailyEdits) return dailyEdits[item.id]!
+  const getDailyAmount = (
+    item: DailyExpense
+  ): string => {
+    if (item.id in dailyEdits)
+      return dailyEdits[item.id]!
     return String(item.amount)
   }
 
   // === Monthly CRUD ===
   const handleAddMonthly = async () => {
-    if (!newMonthlyName.trim() || savingMonthly) return
+    if (!newMonthlyName.trim() || savingMonthly)
+      return
     const amount = parseInt(newMonthlyAmount, 10)
     if (isNaN(amount) || amount < 0) {
       toast.error('Nominal harus angka >= 0')
@@ -290,8 +403,13 @@ export function Settings() {
       }
     )
     if (res.success && res.data) {
-      setMonthlyItems((prev) => [...prev, res.data!])
-      setMonthlyTotal((prev) => prev + res.data!.amount)
+      setMonthlyItems((prev) => [
+        ...prev,
+        res.data!,
+      ])
+      setMonthlyTotal(
+        (prev) => prev + res.data!.amount
+      )
       setNewMonthlyName('')
       setNewMonthlyEmoji('\ud83d\udce6')
       setNewMonthlyAmount('')
@@ -307,10 +425,15 @@ export function Settings() {
     id: string,
     value: string
   ) => {
-    setMonthlyEdits((prev) => ({ ...prev, [id]: value }))
+    setMonthlyEdits((prev) => ({
+      ...prev,
+      [id]: value,
+    }))
   }
 
-  const handleSaveMonthlyAmount = async (id: string) => {
+  const handleSaveMonthlyAmount = async (
+    id: string
+  ) => {
     const val = monthlyEdits[id]
     if (val === undefined) return
     const amount = parseInt(val, 10)
@@ -333,7 +456,8 @@ export function Settings() {
         )
       )
       const newTotal = monthlyItems.reduce(
-        (s, i) => s + (i.id === id ? amount : i.amount),
+        (s, i) =>
+          s + (i.id === id ? amount : i.amount),
         0
       )
       setMonthlyTotal(newTotal)
@@ -348,7 +472,9 @@ export function Settings() {
     setSavingMonthly(false)
   }
 
-  const handleDeleteMonthly = async (id: string) => {
+  const handleDeleteMonthly = async (
+    id: string
+  ) => {
     setSavingMonthly(true)
     const res = await apiClient<{ deleted: string }>(
       `/api/monthly-expenses/${id}`,
@@ -362,7 +488,9 @@ export function Settings() {
         prev.filter((i) => i.id !== id)
       )
       if (removed) {
-        setMonthlyTotal((prev) => prev - removed.amount)
+        setMonthlyTotal(
+          (prev) => prev - removed.amount
+        )
       }
       toast.success('Biaya bulanan dihapus')
     } else if (!res.success) {
@@ -398,7 +526,12 @@ export function Settings() {
   const hasDateChange = editDate !== null
 
   const renderExpenseItem = (
-    item: { id: string; emoji: string; name: string; amount: number },
+    item: {
+      id: string
+      emoji: string
+      name: string
+      amount: number
+    },
     hint: string,
     itemType: 'daily' | 'monthly',
     getValue: () => string,
@@ -416,7 +549,9 @@ export function Settings() {
           <p className="text-sm font-medium text-gray-700 truncate">
             {item.name}
           </p>
-          <p className="text-xs text-gray-400">{hint}</p>
+          <p className="text-xs text-gray-400">
+            {hint}
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -499,7 +634,9 @@ export function Settings() {
             type="text"
             placeholder="Nama (cth: Parkir)"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) =>
+              setName(e.target.value)
+            }
             maxLength={30}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-300"
           />
@@ -512,7 +649,9 @@ export function Settings() {
               inputMode="numeric"
               placeholder="Nominal"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) =>
+                setAmount(e.target.value)
+              }
               className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-300"
             />
           </div>
@@ -559,7 +698,9 @@ export function Settings() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-gray-800 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">{'\u2699\ufe0f'} Pengaturan</h1>
+        <h1 className="text-lg font-bold">
+          {'\u2699\ufe0f'} Pengaturan
+        </h1>
         <p className="text-sm text-gray-400">
           Atur budget, target & preferensi
         </p>
@@ -581,7 +722,9 @@ export function Settings() {
             <div className="rounded-xl bg-white border border-gray-200 px-4 py-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{'\ud83d\udcc5'}</span>
+                  <span className="text-lg">
+                    {'\ud83d\udcc5'}
+                  </span>
                   <div>
                     <p className="text-sm font-medium text-gray-700">
                       Tanggal Target
@@ -610,13 +753,65 @@ export function Settings() {
               {hasDateChange && (
                 <button
                   type="button"
-                  onClick={() => void handleSaveTarget()}
+                  onClick={() =>
+                    void handleSaveTarget()
+                  }
                   disabled={savingTarget}
                   className="tap-highlight-none w-full rounded-lg bg-gray-800 py-2 text-sm font-bold text-white active:scale-95 disabled:bg-gray-300"
                 >
                   {savingTarget
                     ? '\u23f3 Menyimpan...'
                     : '\ud83d\udcbe Simpan Target'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Rest Days */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-gray-500">
+              {'\ud83c\udf19'} Hari Libur
+            </h2>
+            <div className="rounded-xl bg-white border border-gray-200 px-4 py-3 space-y-3">
+              <p className="text-xs text-gray-400">
+                Pilih hari libur mingguan. Target
+                hutang hanya dihitung di hari kerja.
+              </p>
+              <div className="flex justify-between gap-1">
+                {DAY_LABELS.map(({ day, label }) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() =>
+                      handleToggleRestDay(day)
+                    }
+                    className={`tap-highlight-none flex-1 rounded-lg py-2 text-xs font-bold transition-all active:scale-95 ${
+                      restDays.has(day)
+                        ? 'bg-indigo-500 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-center text-gray-400">
+                {restDays.size === 0
+                  ? 'Tidak ada hari libur (kerja setiap hari)'
+                  : `${restDays.size} hari libur per minggu`}
+              </p>
+              {restDaysChanged && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleSaveRestDays()
+                  }
+                  disabled={savingRest}
+                  className="tap-highlight-none w-full rounded-lg bg-indigo-500 py-2 text-sm font-bold text-white active:scale-95 disabled:bg-gray-300"
+                >
+                  {savingRest
+                    ? '\u23f3 Menyimpan...'
+                    : '\ud83d\udcbe Simpan Hari Libur'}
                 </button>
               )}
             </div>
@@ -635,7 +830,8 @@ export function Settings() {
                 'daily',
                 () => getDailyAmount(item),
                 handleDailyAmountChange,
-                (id) => void handleSaveDailyAmount(id),
+                (id) =>
+                  void handleSaveDailyAmount(id),
                 dailyEdits
               )
             )}
@@ -709,7 +905,7 @@ export function Settings() {
             </div>
           </div>
 
-          {/* Panduan / Help */}
+          {/* Panduan */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-gray-500">
               {'\u2753'} Bantuan
@@ -719,16 +915,20 @@ export function Settings() {
               onClick={handleShowGuide}
               className="tap-highlight-none flex w-full items-center gap-3 rounded-xl bg-white border border-gray-200 px-4 py-3 text-left transition-all active:scale-[0.98]"
             >
-              <span className="text-2xl">{'\ud83d\udcd6'}</span>
+              <span className="text-2xl">
+                {'\ud83d\udcd6'}
+              </span>
               <div>
                 <p className="text-sm font-medium text-gray-700">
                   Lihat Panduan
                 </p>
                 <p className="text-xs text-gray-400">
-                  Tampilkan walkthrough fitur-fitur utama
+                  Tampilkan walkthrough fitur utama
                 </p>
               </div>
-              <span className="ml-auto text-gray-300">{'\u203a'}</span>
+              <span className="ml-auto text-gray-300">
+                {'\u203a'}
+              </span>
             </button>
           </div>
 
@@ -744,7 +944,7 @@ export function Settings() {
         </div>
       )}
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation */}
       {deleteTarget && (
         <ConfirmDeleteDialog
           emoji={deleteTarget.emoji}
@@ -755,7 +955,9 @@ export function Settings() {
               ? 'Budget Harian'
               : 'Biaya Bulanan'
           }
-          onConfirm={() => void handleDeleteConfirm()}
+          onConfirm={() =>
+            void handleDeleteConfirm()
+          }
           onCancel={() => setDeleteTarget(null)}
           loading={deleting}
         />
