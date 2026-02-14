@@ -47,6 +47,22 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (debt_id) REFERENCES debts(id) ON DELETE SET NULL
 );
 
+-- Table: orders (F-F08)
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY,
+  transaction_id TEXT,
+  order_date TEXT NOT NULL,
+  order_time TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  fare_amount INTEGER NOT NULL,
+  order_type TEXT NOT NULL DEFAULT 'single',
+  raw_ocr_line TEXT,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    ON DELETE SET NULL
+);
+
 -- Table: settings
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -80,4 +96,6 @@ CREATE INDEX IF NOT EXISTS idx_debt_schedule_status ON debt_schedule(status);
 CREATE INDEX IF NOT EXISTS idx_debt_schedule_due_date ON debt_schedule(due_date);
 CREATE INDEX IF NOT EXISTS idx_monthly_expenses_active ON monthly_expenses(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_daily_expenses_active ON daily_expenses(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_date);
+CREATE INDEX IF NOT EXISTS idx_orders_platform ON orders(platform);
 `
