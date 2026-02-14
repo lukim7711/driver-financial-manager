@@ -19,12 +19,15 @@ interface OcrData {
   message?: string
 }
 
+type TabType = 'receipt' | 'order'
+
 export function OcrUpload() {
   const navigate = useNavigate()
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
+  const [tab, setTab] = useState<TabType>('receipt')
   const [preview, setPreview] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [ocrData, setOcrData] = useState<OcrData | null>(null)
@@ -117,8 +120,37 @@ export function OcrUpload() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-indigo-600 px-4 pt-6 pb-4 text-white">
-        <h1 className="text-lg font-bold">{'\ud83d\udcf7'} Upload Struk</h1>
-        <p className="text-sm text-indigo-200">Foto struk, biar app yang baca</p>
+        <h1 className="text-lg font-bold">{'\ud83d\udcf7'} Upload & Scan</h1>
+        <p className="text-sm text-indigo-200">Foto struk atau screenshot orderan</p>
+
+        {/* Tab switcher */}
+        <div className="mt-3 flex rounded-lg bg-indigo-700 p-1">
+          <button
+            type="button"
+            onClick={() => setTab('receipt')}
+            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
+              tab === 'receipt'
+                ? 'bg-white text-indigo-700'
+                : 'text-indigo-200'
+            }`}
+          >
+            {'\ud83e\uddc2'} Upload Struk
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('order')
+              void navigate('/order-import')
+            }}
+            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
+              tab === 'order'
+                ? 'bg-white text-indigo-700'
+                : 'text-indigo-200'
+            }`}
+          >
+            {'\ud83d\udef5'} Rekap Order
+          </button>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">

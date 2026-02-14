@@ -6,6 +6,7 @@ import { Debts } from './pages/Debts'
 import { Report } from './pages/Report'
 import { Settings } from './pages/Settings'
 import { OcrUpload } from './pages/OcrUpload'
+import { OrderImport } from './pages/OrderImport'
 import { NotFound } from './pages/NotFound'
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/input" element={<QuickInput />} />
             <Route path="/ocr" element={<OcrUpload />} />
+            <Route path="/order-import" element={<OrderImport />} />
             <Route path="/debts" element={<Debts />} />
             <Route path="/report" element={<Report />} />
             <Route path="/settings" element={<Settings />} />
