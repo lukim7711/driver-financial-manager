@@ -32,6 +32,8 @@ interface DashboardData {
     earned_today: number
     gap: number
     is_on_track: boolean
+    is_rest_day: boolean
+    rest_days: number[]
     breakdown: {
       daily_expense: number
       prorated_monthly: number
@@ -40,6 +42,7 @@ interface DashboardData {
       days_in_month: number
     }
     days_remaining: number
+    working_days_remaining: number
     target_date: string
   }
   upcoming_dues: {
@@ -94,7 +97,9 @@ export function Home() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-400">Memuat dashboard...</p>
+        <p className="text-gray-400">
+          Memuat dashboard...
+        </p>
       </div>
     )
   }
@@ -118,6 +123,8 @@ export function Home() {
     earned_today: 0,
     gap: 0,
     is_on_track: false,
+    is_rest_day: false,
+    rest_days: [],
     breakdown: {
       daily_expense: 0,
       prorated_monthly: 0,
@@ -126,6 +133,7 @@ export function Home() {
       days_in_month: 30,
     },
     days_remaining: 0,
+    working_days_remaining: 0,
     target_date: '',
   }
   const dues = data?.upcoming_dues ?? []
@@ -147,7 +155,8 @@ export function Home() {
               {'\ud83d\udcb0'} Money Manager
             </h1>
             <p className="text-sm text-emerald-100">
-              {'\ud83d\udcc5'} {formatDateLong(todayISO())}
+              {'\ud83d\udcc5'}{' '}
+              {formatDateLong(todayISO())}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -192,7 +201,9 @@ export function Home() {
           expense={today.expense}
           debtPayment={today.debt_payment}
           profit={today.profit}
-          transactionCount={today.transaction_count}
+          transactionCount={
+            today.transaction_count
+          }
         />
 
         {/* Daily target */}
@@ -201,14 +212,21 @@ export function Home() {
           earnedToday={target.earned_today}
           gap={target.gap}
           isOnTrack={target.is_on_track}
+          isRestDay={target.is_rest_day}
           breakdown={{
-            dailyExpense: target.breakdown.daily_expense,
+            dailyExpense:
+              target.breakdown.daily_expense,
             proratedMonthly:
               target.breakdown.prorated_monthly,
-            dailyDebt: target.breakdown.daily_debt,
-            daysInMonth: target.breakdown.days_in_month,
+            dailyDebt:
+              target.breakdown.daily_debt,
+            daysInMonth:
+              target.breakdown.days_in_month,
           }}
           daysRemaining={target.days_remaining}
+          workingDaysRemaining={
+            target.working_days_remaining
+          }
         />
 
         {/* Budget bar */}
@@ -239,14 +257,17 @@ export function Home() {
           totalOriginal={debt.total_original}
           totalRemaining={debt.total_remaining}
           totalPaid={debt.total_paid}
-          progressPercentage={debt.progress_percentage}
+          progressPercentage={
+            debt.progress_percentage
+          }
           targetDate={debt.target_date}
         />
 
         {/* Transaction count */}
         {today.transaction_count > 0 && (
           <p className="text-center text-xs text-gray-400">
-            {today.transaction_count} transaksi hari ini
+            {today.transaction_count} transaksi
+            hari ini
           </p>
         )}
         {today.transaction_count === 0 && (
