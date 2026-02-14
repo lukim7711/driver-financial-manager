@@ -6,9 +6,28 @@ import { getNowISO } from '../utils/date'
 
 const route = new Hono<{ Bindings: Bindings }>()
 
-const VALID_TYPES = ['income', 'expense', 'debt_payment'] as const
-const VALID_INCOME_CATS = ['order', 'tips', 'bonus', 'insentif', 'lainnya'] as const
-const VALID_EXPENSE_CATS = ['bbm', 'makan', 'rokok', 'pulsa', 'parkir', 'service', 'rt', 'lainnya'] as const
+const VALID_TYPES = [
+  'income',
+  'expense',
+  'debt_payment',
+] as const
+const VALID_INCOME_CATS = [
+  'order',
+  'tips',
+  'bonus',
+  'insentif',
+  'lainnya',
+] as const
+const VALID_EXPENSE_CATS = [
+  'bbm',
+  'makan',
+  'rokok',
+  'pulsa',
+  'parkir',
+  'service',
+  'rt',
+  'lainnya',
+] as const
 const VALID_SOURCES = ['manual', 'ocr'] as const
 
 // POST /api/transactions
@@ -23,57 +42,122 @@ route.post('/', async (c) => {
       debt_id?: string
     }>()
 
-    const { type, amount, category, note, source, debt_id } = body
+    const { type, amount, category, note, source, debt_id } =
+      body
 
-    if (!type || !VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
+    if (
+      !type ||
+      !VALID_TYPES.includes(
+        type as (typeof VALID_TYPES)[number]
+      )
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: `Invalid type. Must be: ${VALID_TYPES.join(', ')}` },
+        {
+          success: false,
+          error: `Invalid type. Must be: ${VALID_TYPES.join(', ')}`,
+        },
         400
       )
     }
 
-    if (!amount || amount <= 0 || !Number.isInteger(amount)) {
+    if (
+      !amount ||
+      amount <= 0 ||
+      !Number.isInteger(amount)
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Amount harus integer positif (Rupiah)' },
+        {
+          success: false,
+          error: 'Amount harus integer positif (Rupiah)',
+        },
         400
       )
     }
 
-    if (type === 'income' && !VALID_INCOME_CATS.includes(category as typeof VALID_INCOME_CATS[number])) {
+    if (
+      type === 'income' &&
+      !VALID_INCOME_CATS.includes(
+        category as (typeof VALID_INCOME_CATS)[number]
+      )
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: `Invalid income category. Must be: ${VALID_INCOME_CATS.join(', ')}` },
+        {
+          success: false,
+          error: `Invalid income category. Must be: ${VALID_INCOME_CATS.join(', ')}`,
+        },
         400
       )
     }
 
-    if (type === 'expense' && !VALID_EXPENSE_CATS.includes(category as typeof VALID_EXPENSE_CATS[number])) {
+    if (
+      type === 'expense' &&
+      !VALID_EXPENSE_CATS.includes(
+        category as (typeof VALID_EXPENSE_CATS)[number]
+      )
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: `Invalid expense category. Must be: ${VALID_EXPENSE_CATS.join(', ')}` },
+        {
+          success: false,
+          error: `Invalid expense category. Must be: ${VALID_EXPENSE_CATS.join(', ')}`,
+        },
         400
       )
     }
 
-    const validSource = source && VALID_SOURCES.includes(source as typeof VALID_SOURCES[number])
-      ? source
-      : 'manual'
+    const validSource =
+      source &&
+      VALID_SOURCES.includes(
+        source as (typeof VALID_SOURCES)[number]
+      )
+        ? source
+        : 'manual'
 
     const db = getDB(c.env)
     const id = crypto.randomUUID()
     const createdAt = getNowISO()
 
-    await queryDB(db,
-      `INSERT INTO transactions (id, created_at, type, amount, category, note, source, debt_id, is_deleted)
+    await queryDB(
+      db,
+      `INSERT INTO transactions
+        (id, created_at, type, amount, category,
+         note, source, debt_id, is_deleted)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-      [id, createdAt, type, amount, category, note || '', validSource, debt_id || null]
+      [
+        id,
+        createdAt,
+        type,
+        amount,
+        category,
+        note || '',
+        validSource,
+        debt_id || null,
+      ]
     )
 
-    return c.json<ApiResponse<unknown>>({
-      success: true,
-      data: { id, created_at: createdAt, type, amount, category, note: note || '', source: validSource },
-    }, 201)
+    return c.json<ApiResponse<unknown>>(
+      {
+        success: true,
+        data: {
+          id,
+          created_at: createdAt,
+          type,
+          amount,
+          category,
+          note: note || '',
+          source: validSource,
+        },
+      },
+      201
+    )
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Server error',
+      },
       500
     )
   }
@@ -83,11 +167,21 @@ route.post('/', async (c) => {
 route.get('/', async (c) => {
   try {
     const db = getDB(c.env)
-    const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
-    const offset = Math.max(Number(c.req.query('offset')) || 0, 0)
+    const limit = Math.min(
+      Number(c.req.query('limit')) || 50,
+      100
+    )
+    const offset = Math.max(
+      Number(c.req.query('offset')) || 0,
+      0
+    )
 
-    const rows = await queryDB(db,
-      `SELECT * FROM transactions WHERE is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    const rows = await queryDB(
+      db,
+      `SELECT * FROM transactions
+       WHERE is_deleted = 0
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
       [limit, offset]
     )
 
@@ -97,7 +191,13 @@ route.get('/', async (c) => {
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Server error',
+      },
       500
     )
   }
@@ -109,13 +209,18 @@ route.put('/:id', async (c) => {
     const txId = c.req.param('id')
     const db = getDB(c.env)
 
-    const rows = await queryDB(db,
-      `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
+    const rows = await queryDB(
+      db,
+      `SELECT * FROM transactions
+       WHERE id = ? AND is_deleted = 0`,
       [txId]
     )
     if (rows.length === 0) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Transaksi tidak ditemukan' },
+        {
+          success: false,
+          error: 'Transaksi tidak ditemukan',
+        },
         404
       )
     }
@@ -123,7 +228,11 @@ route.put('/:id', async (c) => {
     const existing = rows[0]!
     if (String(existing.type) === 'debt_payment') {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Transaksi pembayaran hutang tidak bisa diedit' },
+        {
+          success: false,
+          error:
+            'Transaksi pembayaran hutang tidak bisa diedit',
+        },
         403
       )
     }
@@ -134,35 +243,63 @@ route.put('/:id', async (c) => {
       note?: string
     }>()
 
-    const newAmount = body.amount ?? Number(existing.amount)
-    const newCategory = body.category ?? String(existing.category)
-    const newNote = body.note ?? String(existing.note ?? '')
+    const newAmount =
+      body.amount ?? Number(existing.amount)
+    const newCategory =
+      body.category ?? String(existing.category)
+    const newNote =
+      body.note ?? String(existing.note ?? '')
 
-    if (newAmount <= 0 || !Number.isInteger(newAmount)) {
+    if (
+      newAmount <= 0 ||
+      !Number.isInteger(newAmount)
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Amount harus integer positif' },
+        {
+          success: false,
+          error: 'Amount harus integer positif',
+        },
         400
       )
     }
 
     const type = String(existing.type)
-    if (type === 'income' && !VALID_INCOME_CATS.includes(newCategory as typeof VALID_INCOME_CATS[number])) {
+    if (
+      type === 'income' &&
+      !VALID_INCOME_CATS.includes(
+        newCategory as (typeof VALID_INCOME_CATS)[number]
+      )
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: `Invalid income category` },
+        {
+          success: false,
+          error: 'Invalid income category',
+        },
         400
       )
     }
-    if (type === 'expense' && !VALID_EXPENSE_CATS.includes(newCategory as typeof VALID_EXPENSE_CATS[number])) {
+    if (
+      type === 'expense' &&
+      !VALID_EXPENSE_CATS.includes(
+        newCategory as (typeof VALID_EXPENSE_CATS)[number]
+      )
+    ) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: `Invalid expense category` },
+        {
+          success: false,
+          error: 'Invalid expense category',
+        },
         400
       )
     }
 
     const updatedAt = getNowISO()
 
-    await queryDB(db,
-      `UPDATE transactions SET amount = ?, category = ?, note = ? WHERE id = ?`,
+    await queryDB(
+      db,
+      `UPDATE transactions
+       SET amount = ?, category = ?, note = ?
+       WHERE id = ?`,
       [newAmount, newCategory, newNote, txId]
     )
 
@@ -178,7 +315,13 @@ route.put('/:id', async (c) => {
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Server error',
+      },
       500
     )
   }
@@ -190,26 +333,118 @@ route.delete('/:id', async (c) => {
     const txId = c.req.param('id')
     const db = getDB(c.env)
 
-    const rows = await queryDB(db,
-      `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
+    const rows = await queryDB(
+      db,
+      `SELECT * FROM transactions
+       WHERE id = ? AND is_deleted = 0`,
       [txId]
     )
     if (rows.length === 0) {
       return c.json<ApiResponse<never>>(
-        { success: false, error: 'Transaksi tidak ditemukan' },
+        {
+          success: false,
+          error: 'Transaksi tidak ditemukan',
+        },
         404
       )
     }
 
-    if (String(rows[0]!.type) === 'debt_payment') {
-      return c.json<ApiResponse<never>>(
-        { success: false, error: 'Transaksi pembayaran hutang tidak bisa dihapus' },
-        403
+    const tx = rows[0]!
+    const txType = String(tx.type)
+    const txAmount = Number(tx.amount) || 0
+    const debtId = tx.debt_id
+      ? String(tx.debt_id)
+      : null
+
+    // Reverse debt payment if applicable
+    if (txType === 'debt_payment' && debtId) {
+      const debtRows = await queryDB(
+        db,
+        `SELECT * FROM debts WHERE id = ?`,
+        [debtId]
       )
+
+      if (debtRows.length > 0) {
+        const debt = debtRows[0]!
+        const isDeleted =
+          Number(debt.is_deleted) === 1
+
+        if (!isDeleted) {
+          // Debt still exists: reverse remaining
+          await queryDB(
+            db,
+            `UPDATE debts
+             SET total_remaining =
+               MIN(
+                 total_remaining + ?,
+                 total_original
+               )
+             WHERE id = ?`,
+            [txAmount, debtId]
+          )
+
+          // Try to reverse schedule status
+          // Find the most recent paid schedule
+          const paidScheds = await queryDB(
+            db,
+            `SELECT * FROM debt_schedule
+             WHERE debt_id = ?
+               AND status = 'paid'
+             ORDER BY due_date DESC
+             LIMIT 1`,
+            [debtId]
+          )
+
+          if (paidScheds.length > 0) {
+            const sched = paidScheds[0]!
+            const schedPaid =
+              Number(sched.paid_amount) || 0
+            const newPaid = schedPaid - txAmount
+
+            if (newPaid <= 0) {
+              // Fully reverse this schedule
+              await queryDB(
+                db,
+                `UPDATE debt_schedule
+                 SET status = 'unpaid',
+                     paid_date = NULL,
+                     paid_amount = 0
+                 WHERE id = ?`,
+                [String(sched.id)]
+              )
+              await queryDB(
+                db,
+                `UPDATE debts
+                 SET paid_installments =
+                   MAX(paid_installments - 1, 0)
+                 WHERE id = ?`,
+                [debtId]
+              )
+            } else {
+              // Partially reverse
+              await queryDB(
+                db,
+                `UPDATE debt_schedule
+                 SET status = 'unpaid',
+                     paid_date = NULL,
+                     paid_amount = ?
+                 WHERE id = ?`,
+                [newPaid, String(sched.id)]
+              )
+            }
+          }
+        }
+        // If debt is deleted, just soft-delete
+        // the transaction (no reverse needed)
+      }
     }
 
-    await queryDB(db,
-      `UPDATE transactions SET is_deleted = 1 WHERE id = ?`,
+    // Soft delete the transaction
+    await queryDB(
+      db,
+      `UPDATE transactions
+       SET is_deleted = 1
+       WHERE id = ?`,
       [txId]
     )
 
@@ -219,7 +454,13 @@ route.delete('/:id', async (c) => {
     })
   } catch (error) {
     return c.json<ApiResponse<never>>(
-      { success: false, error: error instanceof Error ? error.message : 'Server error' },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Server error',
+      },
       500
     )
   }
