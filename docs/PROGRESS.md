@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 08:14 WIB
+> Last Updated: 2026-02-14 10:11 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F-F08 Smart Order Import (Phase 1)
+- **Fase:** F016 Hari Libur (Rest Days)
 - **Status:** ✅ DONE
-- **Commit:** Squash-merged [#22](https://github.com/lukim7711/driver-financial-manager/pull/22)
-- **Catatan:** Upload screenshot Riwayat Pesanan Shopee → OCR parse → batch save sebagai pemasukan + data order terstruktur untuk future AI analysis.
+- **Commit:** Squash-merged [#23](https://github.com/lukim7711/driver-financial-manager/pull/23)
+- **Catatan:** Toggle hari libur mingguan di Settings. Target hutang harian dihitung berdasarkan hari kerja saja. Dashboard tampilkan banner hari libur + bonus display.
 
 ---
 
-## 🏆 STATUS: v2.4.0 — Smart Order Import
+## 🏆 STATUS: v2.5.0 — Rest Days
 
 ### Infrastructure
 
@@ -58,6 +58,7 @@
 | F-F07 | Multi-period Report (Bulanan) | ✅ DONE | [#20](https://github.com/lukim7711/driver-financial-manager/pull/20) |
 | F-F07b | Custom Date Range Report | ✅ DONE | [#21](https://github.com/lukim7711/driver-financial-manager/pull/21) |
 | F-F08 | Smart Order Import (Phase 1) | ✅ DONE | [#22](https://github.com/lukim7711/driver-financial-manager/pull/22) |
+| F016 | Hari Libur (Rest Days) | ✅ DONE | [#23](https://github.com/lukim7711/driver-financial-manager/pull/23) |
 
 ### Bugfixes
 
@@ -69,6 +70,7 @@
 | EMOJI-FIX | Emoji escape bug di DailyTarget | ✅ DONE | main |
 | ONBOARD-FIX | Emoji escape + refresh restyle | ✅ DONE | main |
 | CONFIRM-DEL | Confirm dialog di Settings delete | ✅ DONE | main |
+| OCR-FIX2 | Quality-first compression + smarter order parsing | ✅ DONE | main |
 
 ### Refactor / DX
 
@@ -105,13 +107,13 @@
 
 ---
 
-## API v2.4.0 — 26 Endpoints
+## API v2.5.0 — 26 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
 | `/api/transactions` | POST, GET | F001 |
 | `/api/transactions/:id` | PUT, DELETE | F007 |
-| `/api/dashboard` | GET | F004 + DT001 |
+| `/api/dashboard` | GET | F004 + DT001 + F016 |
 | `/api/debts` | GET, POST | F005 + F012 + F015v4 |
 | `/api/debts/:id` | PUT, DELETE | F012 |
 | `/api/debts/:id/pay` | POST | F006 + F015v4 (record mode) |
@@ -123,7 +125,7 @@
 | `/api/ocr` | POST | F002 |
 | `/api/ocr/orders` | POST | F-F08 |
 | `/api/orders/batch` | POST | F-F08 |
-| `/api/settings` | GET, PUT | Settings + F014 |
+| `/api/settings` | GET, PUT | Settings + F014 + F016 |
 | `/api/monthly-expenses` | GET, POST | F013 |
 | `/api/monthly-expenses/:id` | PUT, DELETE | F013 |
 | `/api/daily-expenses` | GET, POST | BDG-FIX |
@@ -132,6 +134,29 @@
 ---
 
 ## Session Log
+
+### Session 28 — 2026-02-14 09:58–10:11 WIB
+
+**Fase:** F016 Hari Libur (Rest Days)
+
+**Implemented:**
+1. `api/src/routes/settings.ts` — GET/PUT `rest_days` (comma-separated day numbers)
+2. `api/src/routes/dashboard.ts` — `countWorkingDays()`, `isRestDay()`, new fields: `is_rest_day`, `rest_days`, `working_days_remaining`
+3. `frontend/src/pages/Settings.tsx` — 7-day toggle buttons (Sen–Min)
+4. `frontend/src/components/DailyTarget.tsx` — Rest day view (🌙 banner + bonus) vs working day view
+5. `frontend/src/pages/Home.tsx` — Pass new props to DailyTarget
+6. Feature spec: `docs/features/F016-rest-days.md`
+
+**Technical decisions:**
+- Rest days stored as comma-separated day numbers in settings table (e.g., "0" = Sunday, "0,6" = Sunday+Saturday)
+- Day numbering follows JS getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
+- countWorkingDays() loops from tomorrow→targetDate, skipping rest days
+- On rest day: target=0, dailyDebt=0, income shown as "🎉 Bonus"
+- On work day: dailyDebt = sisaHutang ÷ workingDaysRemaining
+- Prorate bulanan tetap dibagi SEMUA hari (tagihan tidak peduli hari kerja)
+- No schema change needed — uses existing `settings` table
+
+**Result:** CI ✅ → Squash-merged ([#23](https://github.com/lukim7711/driver-financial-manager/pull/23))
 
 ### Session 27 — 2026-02-14 08:03–08:14 WIB
 
@@ -339,6 +364,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 08:14 WIB
-- **Total Sessions:** 27
-- **Current Phase:** v2.4.0 — Smart Order Import
+- **Last Updated:** 2026-02-14 10:11 WIB
+- **Total Sessions:** 28
+- **Current Phase:** v2.5.0 — Rest Days

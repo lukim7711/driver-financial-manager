@@ -1,7 +1,7 @@
 # 🧭 AI-CONTEXT
 # Money Manager — AI Navigation Map
 
-> **Version:** 6.0  
+> **Version:** 7.0  
 > **Last Updated:** 2026-02-14  
 
 ---
@@ -45,8 +45,8 @@ Cloudflare Workers (Hono API)
    ├── /api/ocr               → Proxy ke ocr.space (struk)
    ├── /api/ocr/orders        → Parse screenshot Shopee → order list
    ├── /api/orders/batch      → Batch save orders + income transaction
-   ├── /api/settings          → Target date preferences
-   └── /api/dashboard         → Aggregate home data + daily target
+   ├── /api/settings          → Target date + rest days preferences
+   └── /api/dashboard         → Aggregate home data + daily target + rest day
    │
    ▼
 Durable Objects (SQLite)
@@ -56,7 +56,7 @@ Durable Objects (SQLite)
    ├── orders           (runtime: parsed from Shopee screenshots)
    ├── daily_expenses   (runtime: CRUD budget harian)
    ├── monthly_expenses (runtime: CRUD biaya bulanan)
-   └── settings         (runtime: target date)
+   └── settings         (runtime: target date, rest_days)
 ```
 
 ---
@@ -86,8 +86,8 @@ Durable Objects (SQLite)
 | `frontend/src/pages/OrderImport.tsx` | Upload screenshot Shopee → parse → preview → batch save |
 | `frontend/src/pages/Debts.tsx` | CRUD hutang + progress + bayar cicilan + FAB tambah |
 | `frontend/src/pages/Report.tsx` | Laporan harian/mingguan/bulanan/custom + riwayat + export CSV |
-| `frontend/src/pages/Settings.tsx` | Target date + CRUD budget harian + CRUD biaya bulanan |
-| `frontend/src/components/DailyTarget.tsx` | Target harian minimal: progress bar + gap + breakdown |
+| `frontend/src/pages/Settings.tsx` | Target date + rest days + CRUD budget harian + CRUD biaya bulanan |
+| `frontend/src/components/DailyTarget.tsx` | Target harian: working day (progress bar) vs rest day (🌙 banner + bonus) |
 | `frontend/src/components/SummaryCard.tsx` | Ringkasan pemasukan/pengeluaran/profit hari ini |
 | `frontend/src/components/BudgetBar.tsx` | Sisa budget harian (daily only, no prorate) |
 | `frontend/src/components/CategoryGrid.tsx` | Grid kategori income/expense |
@@ -107,6 +107,7 @@ Durable Objects (SQLite)
 | `frontend/src/lib/api.ts` | API client base |
 | `frontend/src/lib/format.ts` | Format Rupiah (Rp 50.000), tanggal |
 | `frontend/src/lib/csv-export.ts` | CSV generation + browser download utility |
+| `frontend/src/lib/compress-image.ts` | Quality-first image compression for OCR upload |
 | `frontend/src/types/index.ts` | Shared TypeScript interfaces |
 | `frontend/public/manifest.json` | PWA config |
 | `frontend/public/sw.js` | Service worker for caching |
@@ -126,8 +127,8 @@ Durable Objects (SQLite)
 | `api/src/routes/ocr.ts` | POST image → ocr.space → parsed receipt |
 | `api/src/routes/ocr-orders.ts` | POST screenshot → ocr.space → parsed Shopee orders |
 | `api/src/routes/orders-batch.ts` | POST batch save orders + income transaction |
-| `api/src/routes/settings.ts` | GET/PUT settings (target date) |
-| `api/src/routes/dashboard.ts` | GET dashboard aggregate + daily target |
+| `api/src/routes/settings.ts` | GET/PUT settings (target date, rest_days) |
+| `api/src/routes/dashboard.ts` | GET dashboard aggregate + daily target + rest day detection |
 | `api/src/db/durable-object.ts` | DO class: SQLite init, migrations |
 | `api/src/db/schema.ts` | Table definitions (SQL string) |
 | `api/src/db/seed.ts` | Pre-loaded hutang data (5 platform) |
@@ -163,27 +164,37 @@ Durable Objects (SQLite)
 - CRUD dinamis di Settings
 - Digunakan di DailyTarget sebagai prorate (÷ hari di bulan)
 
-### 5.5 Target Harian Minimal (DT001)
-- **Formula:** `Target = Budget Harian + (Bulanan ÷ Hari di Bulan) + (Sisa Hutang ÷ Sisa Hari ke Target)`
-- Prorate bulanan HANYA di sini, bukan di BudgetBar
+### 5.5 Target Harian Minimal (DT001 + F016)
+- **Hari Kerja:** `Target = Budget Harian + (Bulanan ÷ Hari di Bulan) + (Sisa Hutang ÷ Hari Kerja Tersisa)`
+- **Hari Libur:** `Target = 0` (pemasukan ditampilkan sebagai "Bonus")
+- Prorate bulanan dibagi SEMUA hari di bulan (tidak hanya hari kerja)
+- `workingDaysRemaining` = loop dari besok→targetDate, skip rest days
+- Pemasukan di hari libur mengurangi sisa hutang → target hari kerja berikutnya turun otomatis
 
-### 5.6 Target Lunas
+### 5.6 Hari Libur / Rest Days (F016)
+- Disimpan di `settings` table: key=`rest_days`, value=comma-separated day numbers
+- Day numbering: 0=Minggu, 1=Senin, ..., 6=Sabtu (JS `getDay()`)
+- Default: `"0"` (Minggu libur)
+- User bisa toggle di Settings (7-day toggle buttons)
+- Dashboard API returns: `is_rest_day`, `rest_days[]`, `working_days_remaining`
+
+### 5.7 Target Lunas
 - Editable di Settings (default 13 April 2026)
 - Progress = (total_original - total_remaining) / total_original × 100%
 
-### 5.7 Export CSV
+### 5.8 Export CSV
 - CSV generated client-side (no backend endpoint)
 - Reuses data from `/api/report/daily`
 - BOM header for Excel compatibility
 - Filename: `laporan-harian-YYYY-MM-DD.csv` atau `laporan-mingguan-YYYY-MM-DD.csv`
 
-### 5.8 Smart Order Import (F-F08)
+### 5.9 Smart Order Import (F-F08)
 - Upload screenshot Shopee "Riwayat Pesanan" → OCR parse → batch save
 - Per order: tanggal, waktu, platform (SPX/ShopeeFood), argo, tipe (single/combined)
 - 1 screenshot = ~8-10 order, multiple screenshots supported (append + dedup)
 - Creates 1 income transaction (total argo) + N rows in `orders` table
 - Duplicate detection: same date + time + fare_amount = skip
-- Data digunakan untuk future AI analysis (Phase 2 & 3)
+- Image compression: quality-first (no resize if width ≤ 1080px), min width 500px
 
 ---
 
@@ -200,6 +211,7 @@ Durable Objects (SQLite)
 | v2.1.0 Export CSV | ✅ SHIPPED |
 | v2.3.0 Multi-period Report + Custom Range | ✅ SHIPPED |
 | v2.4.0 Smart Order Import (Phase 1) | ✅ SHIPPED |
+| v2.5.0 Rest Days (Hari Libur) | ✅ SHIPPED |
 
 ---
 
@@ -228,3 +240,4 @@ Durable Objects (SQLite)
 | 4.1 | 2026-02-14 | Budget harian CRUD: daily_expenses table, separated BudgetBar from prorate |
 | 5.0 | 2026-02-14 | v2.1.0: Export CSV, Onboarding, DRY refactor, updated file map + business rules |
 | 6.0 | 2026-02-14 | v2.4.0: Smart Order Import (F-F08), orders table, OCR order parsing, batch save |
+| 7.0 | 2026-02-14 | v2.5.0: F016 Rest Days — hari libur toggle, working days calculation, rest day UI |
