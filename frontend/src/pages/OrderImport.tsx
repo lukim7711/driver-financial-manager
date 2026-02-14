@@ -156,7 +156,7 @@ export function OrderImport() {
       }
     )
 
-    if (res.success && res.data) {
+    if (res.success) {
       const d = res.data
       const msg = d.orders_skipped > 0
         ? `${d.orders_saved} order disimpan (${d.orders_skipped} duplikat diskip). Total: ${formatRupiah(d.total_income)}`
@@ -164,7 +164,7 @@ export function OrderImport() {
       toast.success(msg)
       void navigate('/')
     } else {
-      toast.error(res.error || 'Gagal menyimpan')
+      toast.error(res.error)
     }
     setSaving(false)
   }
