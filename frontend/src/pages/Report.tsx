@@ -9,6 +9,7 @@ import { TransactionItem } from '../components/TransactionItem'
 import { EditTransaction } from '../components/EditTransaction'
 import { WeeklyReport } from '../components/WeeklyReport'
 import { MonthlyReport } from '../components/MonthlyReport'
+import { CustomRangeReport } from '../components/CustomRangeReport'
 import { ExportCsvButton } from '../components/ExportCsvButton'
 import { BottomNav } from '../components/BottomNav'
 
@@ -45,7 +46,7 @@ interface ReportData {
   transactions: Transaction[]
 }
 
-type TabType = 'daily' | 'weekly' | 'monthly'
+type TabType = 'daily' | 'weekly' | 'monthly' | 'custom'
 
 function shiftDate(dateStr: string, days: number): string {
   const d = new Date(dateStr)
@@ -115,6 +116,13 @@ export function Report() {
   const weekStart = getMonday(date)
   const weekEnd = shiftDate(weekStart, 6)
 
+  const tabStyle = (t: TabType) =>
+    `tap-highlight-none flex-1 rounded-md py-1.5 text-xs font-medium transition-all ${
+      tab === t
+        ? 'bg-white text-purple-700'
+        : 'text-purple-200'
+    }`
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
@@ -123,49 +131,46 @@ export function Report() {
           <h1 className="text-lg font-bold">
             {'\ud83d\udcca'} Laporan
           </h1>
-          <ExportCsvButton
-            mode={tab}
-            date={date}
-            weekStart={weekStart}
-            weekEnd={weekEnd}
-            month={currentMonth}
-          />
+          {tab !== 'custom' && (
+            <ExportCsvButton
+              mode={tab}
+              date={date}
+              weekStart={weekStart}
+              weekEnd={weekEnd}
+              month={currentMonth}
+            />
+          )}
         </div>
 
-        {/* Tab switcher — 3 tabs */}
+        {/* Tab switcher — 4 tabs */}
         <div className="mt-3 flex rounded-lg bg-purple-700 p-1">
           <button
             type="button"
             onClick={() => setTab('daily')}
-            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-              tab === 'daily'
-                ? 'bg-white text-purple-700'
-                : 'text-purple-200'
-            }`}
+            className={tabStyle('daily')}
           >
             {'\ud83d\udcc5'} Harian
           </button>
           <button
             type="button"
             onClick={() => setTab('weekly')}
-            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-              tab === 'weekly'
-                ? 'bg-white text-purple-700'
-                : 'text-purple-200'
-            }`}
+            className={tabStyle('weekly')}
           >
             {'\ud83d\udcc6'} Mingguan
           </button>
           <button
             type="button"
             onClick={() => setTab('monthly')}
-            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-              tab === 'monthly'
-                ? 'bg-white text-purple-700'
-                : 'text-purple-200'
-            }`}
+            className={tabStyle('monthly')}
           >
             {'\ud83d\uddd3\ufe0f'} Bulanan
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('custom')}
+            className={tabStyle('custom')}
+          >
+            {'\ud83d\udcc5'} Custom
           </button>
         </div>
 
@@ -202,6 +207,9 @@ export function Report() {
           </div>
         )}
       </div>
+
+      {/* Custom tab */}
+      {tab === 'custom' && <CustomRangeReport />}
 
       {/* Monthly tab */}
       {tab === 'monthly' && <MonthlyReport />}
