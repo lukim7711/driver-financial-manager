@@ -1,21 +1,21 @@
 # 📊 PROGRESS LOG
 # Money Manager — Driver Ojol Financial Dashboard
 
-> Last Updated: 2026-02-14 07:17 WIB
+> Last Updated: 2026-02-14 07:27 WIB
 
 ---
 
 ## Sesi Terakhir
 
 - **Tanggal:** 2026-02-14
-- **Fase:** F-F07 Multi-period Report (Laporan Bulanan)
+- **Fase:** F-F07 Custom Date Range Report
 - **Status:** ✅ DONE
-- **Commit:** Squash-merged [#20](https://github.com/lukim7711/driver-financial-manager/pull/20)
-- **Catatan:** Laporan bulanan dengan ringkasan, rata-rata, tren vs bulan lalu, breakdown per minggu, top pengeluaran, sumber pemasukan, + export CSV bulanan.
+- **Commit:** Squash-merged [#21](https://github.com/lukim7711/driver-financial-manager/pull/21)
+- **Catatan:** Tab ke-4 "Custom" di Laporan — pilih rentang tanggal bebas dengan preset 7/14/30 hari & Bulan Ini.
 
 ---
 
-## 🏆 STATUS: v2.2.0 — Multi-period Report
+## 🏆 STATUS: v2.3.0 — Custom Date Range
 
 ### Infrastructure
 
@@ -55,7 +55,8 @@
 | F015v4 | Smart Debt Form (3 modes) | ✅ DONE | [#16](https://github.com/lukim7711/driver-financial-manager/pull/16) |
 | F011 | Help/Onboarding Walkthrough | ✅ DONE | [#19](https://github.com/lukim7711/driver-financial-manager/pull/19) |
 | F-F05 | Export CSV | ✅ DONE | main |
-| F-F07 | Multi-period Report (Laporan Bulanan) | ✅ DONE | [#20](https://github.com/lukim7711/driver-financial-manager/pull/20) |
+| F-F07 | Multi-period Report (Bulanan) | ✅ DONE | [#20](https://github.com/lukim7711/driver-financial-manager/pull/20) |
+| F-F07b | Custom Date Range Report | ✅ DONE | [#21](https://github.com/lukim7711/driver-financial-manager/pull/21) |
 
 ### Bugfixes
 
@@ -96,11 +97,11 @@
 | F-F04 | Grafik/Chart Visual | ⏳ Backlog |
 | F-F05 | Export CSV | ✅ DONE |
 | F-F06 | Notifikasi Proaktif | ⏳ Backlog |
-| F-F07 | Multi-period Report | ✅ DONE |
+| F-F07 | Multi-period Report + Custom Range | ✅ DONE |
 
 ---
 
-## API v2.2.0 — 23 Endpoints
+## API v2.3.0 — 24 Endpoints
 
 | Endpoint | Method | Feature |
 |----------|--------|---------|
@@ -114,6 +115,7 @@
 | `/api/report/daily` | GET | F008 |
 | `/api/report/weekly` | GET | F009 |
 | `/api/report/monthly` | GET | F-F07 |
+| `/api/report/custom` | GET | F-F07b |
 | `/api/ocr` | POST | F002 |
 | `/api/settings` | GET, PUT | Settings + F014 |
 | `/api/monthly-expenses` | GET, POST | F013 |
@@ -124,6 +126,25 @@
 ---
 
 ## Session Log
+
+### Session 26 — 2026-02-14 07:22–07:27 WIB
+
+**Fase:** F-F07b Custom Date Range Report
+
+**Implemented:**
+1. `api/src/routes/report-custom.ts` — GET /api/report/custom?start=...&end=...
+2. `frontend/src/components/CustomRangeReport.tsx` — Date pickers + presets + report UI
+3. Updated `Report.tsx` — 4-tab switcher (Harian | Mingguan | Bulanan | Custom)
+4. Updated `api/src/index.ts` — Register reportCustomRoute, version 2.3.0
+
+**Technical decisions:**
+- Native `<input type="date">` for mobile-friendly date pickers
+- Quick presets: 7 hari, 14 hari, 30 hari, Bulan Ini (auto-fetch on tap)
+- Custom tab hides header Export CSV button (export handled inline in future)
+- Tab style extracted to `tabStyle()` helper in Report.tsx for DRY
+- `text-xs` for tab labels to fit 4 tabs on 360px screen
+
+**Result:** CI ✅ → Squash-merged ([#21](https://github.com/lukim7711/driver-financial-manager/pull/21))
 
 ### Session 25 — 2026-02-14 07:01–07:17 WIB
 
@@ -284,6 +305,6 @@
 
 **Document Control:**
 - **Created:** 2026-02-13
-- **Last Updated:** 2026-02-14 07:17 WIB
-- **Total Sessions:** 25
-- **Current Phase:** v2.2.0 — Multi-period Report
+- **Last Updated:** 2026-02-14 07:27 WIB
+- **Total Sessions:** 26
+- **Current Phase:** v2.3.0 — Custom Date Range
