@@ -8,6 +8,8 @@ import { reportRoute } from './routes/report'
 import { reportMonthlyRoute } from './routes/report-monthly'
 import { reportCustomRoute } from './routes/report-custom'
 import { ocrRoute } from './routes/ocr'
+import { ocrOrdersRoute } from './routes/ocr-orders'
+import { ordersBatchRoute } from './routes/orders-batch'
 import { settingsRoute } from './routes/settings'
 import { monthlyExpenseRoute } from './routes/monthly-expense'
 import { dailyExpenseRoute } from './routes/daily-expense'
@@ -46,7 +48,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '2.3.0',
+      version: '2.4.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -61,6 +63,8 @@ app.route('/api/report', reportRoute)
 app.route('/api/report', reportMonthlyRoute)
 app.route('/api/report', reportCustomRoute)
 app.route('/api/ocr', ocrRoute)
+app.route('/api/ocr', ocrOrdersRoute)
+app.route('/api/orders', ordersBatchRoute)
 app.route('/api/settings', settingsRoute)
 app.route('/api/monthly-expenses', monthlyExpenseRoute)
 app.route('/api/daily-expenses', dailyExpenseRoute)
