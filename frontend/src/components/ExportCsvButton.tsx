@@ -91,9 +91,9 @@ export function ExportCsvButton({
 
   const handleExportMonthly = async () => {
     const m = month ?? date.slice(0, 7)
-    const [yearStr, moStr] = m.split('-')
-    const year = parseInt(yearStr, 10)
-    const mo = parseInt(moStr, 10)
+    const parts = m.split('-')
+    const year = parseInt(parts[0] ?? '2026', 10)
+    const mo = parseInt(parts[1] ?? '1', 10)
     const days = getDaysInMonth(year, mo)
 
     const allTxs: Transaction[] = []

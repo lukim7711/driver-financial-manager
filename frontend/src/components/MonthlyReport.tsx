@@ -68,8 +68,12 @@ function getCurrentMonth(): string {
   return `${y}-${m}`
 }
 
-function shiftMonth(monthStr: string, delta: number): string {
-  const [y, m] = monthStr.split('-').map(Number)
+function shiftMonth(
+  monthStr: string, delta: number
+): string {
+  const parts = monthStr.split('-')
+  const y = parseInt(parts[0] ?? '2026', 10)
+  const m = parseInt(parts[1] ?? '1', 10)
   const d = new Date(y, m - 1 + delta, 1)
   const ny = d.getFullYear()
   const nm = String(d.getMonth() + 1).padStart(2, '0')

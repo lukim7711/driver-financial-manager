@@ -72,7 +72,6 @@ export function Report() {
   const toast = useToast()
   const [tab, setTab] = useState<TabType>('daily')
   const [date, setDate] = useState(todayISO())
-  const [month, setMonth] = useState(getCurrentMonth())
   const [data, setData] = useState<ReportData | null>(
     null
   )
@@ -80,6 +79,8 @@ export function Report() {
   const [editTx, setEditTx] = useState<Transaction | null>(
     null
   )
+
+  const currentMonth = getCurrentMonth()
 
   const fetchReport = useCallback(async (d: string) => {
     setLoading(true)
@@ -127,7 +128,7 @@ export function Report() {
             date={date}
             weekStart={weekStart}
             weekEnd={weekEnd}
-            month={month}
+            month={currentMonth}
           />
         </div>
 

@@ -69,15 +69,17 @@ route.get('/monthly', async (c) => {
       )
     }
 
-    const [yearStr, monthStr] = month.split('-')
-    const year = parseInt(yearStr, 10)
-    const mo = parseInt(monthStr, 10)
+    // Safe to split after regex validation
+    const parts = month.split('-')
+    const year = parseInt(parts[0] ?? '0', 10)
+    const mo = parseInt(parts[1] ?? '0', 10)
     const daysInMonth = getDaysInMonth(year, mo)
     const monthLabel = `${MONTH_NAMES[mo - 1]} ${year}`
 
     const db = getDB(c.env)
+    const lastDay = String(daysInMonth).padStart(2, '0')
     const monthStart = `${month}-01T00:00:00+07:00`
-    const monthEnd = `${month}-${String(daysInMonth).padStart(2, '0')}T23:59:59+07:00`
+    const monthEnd = `${month}-${lastDay}T23:59:59+07:00`
 
     const rows = await queryDB(db,
       `SELECT * FROM transactions
@@ -92,8 +94,9 @@ route.get('/monthly', async (c) => {
     const prevYear = mo === 1 ? year - 1 : year
     const prevMonth = `${prevYear}-${String(prevMo).padStart(2, '0')}`
     const prevDays = getDaysInMonth(prevYear, prevMo)
+    const prevLast = String(prevDays).padStart(2, '0')
     const prevStart = `${prevMonth}-01T00:00:00+07:00`
-    const prevEnd = `${prevMonth}-${String(prevDays).padStart(2, '0')}T23:59:59+07:00`
+    const prevEnd = `${prevMonth}-${prevLast}T23:59:59+07:00`
 
     const prevRows = await queryDB(db,
       `SELECT type, amount FROM transactions
@@ -161,12 +164,14 @@ route.get('/monthly', async (c) => {
           count: 0,
         })
       }
-      const week = weeklyMap.get(monday)!
-      week.count++
-      if (type === 'income') week.income += amt
-      else if (type === 'expense') week.expense += amt
-      else if (type === 'debt_payment') {
-        week.debt_payment += amt
+      const week = weeklyMap.get(monday)
+      if (week) {
+        week.count++
+        if (type === 'income') week.income += amt
+        else if (type === 'expense') week.expense += amt
+        else if (type === 'debt_payment') {
+          week.debt_payment += amt
+        }
       }
     }
 
