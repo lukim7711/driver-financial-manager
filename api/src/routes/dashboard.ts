@@ -24,6 +24,8 @@ interface DailyTarget {
   earned_today: number
   gap: number
   is_on_track: boolean
+  is_rest_day: boolean
+  rest_days: number[]
   breakdown: {
     daily_expense: number
     prorated_monthly: number
@@ -32,6 +34,7 @@ interface DailyTarget {
     days_in_month: number
   }
   days_remaining: number
+  working_days_remaining: number
   target_date: string
 }
 
@@ -79,21 +82,65 @@ function getDaysInMonth(dateStr: string): number {
   ).getDate()
 }
 
+function parseRestDays(raw: string): number[] {
+  if (!raw || raw.trim() === '') return []
+  return raw
+    .split(',')
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !isNaN(n) && n >= 0 && n <= 6)
+}
+
+function isRestDay(
+  dateStr: string,
+  restDays: number[]
+): boolean {
+  if (restDays.length === 0) return false
+  const d = new Date(dateStr + 'T12:00:00+07:00')
+  return restDays.includes(d.getDay())
+}
+
+function countWorkingDays(
+  startDate: string,
+  endDate: string,
+  restDays: number[]
+): number {
+  if (restDays.length === 0) {
+    const diffMs =
+      new Date(endDate).getTime() -
+      new Date(startDate).getTime()
+    return Math.max(
+      Math.ceil(diffMs / (1000 * 60 * 60 * 24)), 1
+    )
+  }
+
+  let count = 0
+  const start = new Date(startDate + 'T12:00:00+07:00')
+  const end = new Date(endDate + 'T12:00:00+07:00')
+
+  const cursor = new Date(start)
+  while (cursor <= end) {
+    if (!restDays.includes(cursor.getDay())) {
+      count++
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return Math.max(count, 1)
+}
+
 route.get('/', async (c) => {
   try {
     const date = c.req.query('date')
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Parameter date wajib (YYYY-MM-DD)',
-        },
-        400
-      )
+      return c.json<ApiResponse<never>>({
+        success: false,
+        error: 'Parameter date wajib (YYYY-MM-DD)',
+      }, 400)
     }
 
     const db = getDB(c.env)
 
+    // Transactions today
     const txRows = await queryDB(db,
       `SELECT
         COALESCE(SUM(
@@ -114,7 +161,8 @@ route.get('/', async (c) => {
     const income = Number(tx.income) || 0
     const expense = Number(tx.expense) || 0
     const debtPayment = Number(tx.debt_payment) || 0
-    const txCount = Number(tx.transaction_count) || 0
+    const txCount =
+      Number(tx.transaction_count) || 0
 
     const today: TodaySummary = {
       income,
@@ -124,6 +172,7 @@ route.get('/', async (c) => {
       transaction_count: txCount,
     }
 
+    // Daily budget
     const dailyRows = await queryDB(db,
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM daily_expenses
@@ -132,6 +181,7 @@ route.get('/', async (c) => {
     const dailyBudgetTotal =
       Number(dailyRows[0]?.total) || 0
 
+    // Monthly expenses
     const monthlyRows = await queryDB(db,
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM monthly_expenses
@@ -144,7 +194,8 @@ route.get('/', async (c) => {
       ? Math.round(totalMonthly / daysInMonth)
       : 0
 
-    const budgetRemaining = dailyBudgetTotal - expense
+    const budgetRemaining =
+      dailyBudgetTotal - expense
     const pctUsed = dailyBudgetTotal > 0
       ? Math.round(
           (expense / dailyBudgetTotal) * 100
@@ -159,14 +210,25 @@ route.get('/', async (c) => {
       percentage_used: pctUsed,
     }
 
-    const targetRows = await queryDB(db,
-      `SELECT value FROM settings
-       WHERE key = 'debt_target_date'`
+    // Settings: target date + rest days
+    const settRows = await queryDB(db,
+      `SELECT key, value FROM settings
+       WHERE key IN ('debt_target_date', 'rest_days')`
     )
-    const targetDate = targetRows[0]
-      ? String(targetRows[0].value)
-      : '2026-04-13'
+    let targetDate = '2026-04-13'
+    let restDaysRaw = '0'
+    for (const row of settRows) {
+      if (String(row.key) === 'debt_target_date') {
+        targetDate = String(row.value)
+      }
+      if (String(row.key) === 'rest_days') {
+        restDaysRaw = String(row.value)
+      }
+    }
+    const restDays = parseRestDays(restDaysRaw)
+    const todayIsRestDay = isRestDay(date, restDays)
 
+    // Debt totals
     const debtRows = await queryDB(db,
       `SELECT
         COALESCE(SUM(total_original), 0) as total_original,
@@ -181,28 +243,53 @@ route.get('/', async (c) => {
       Number(debtAgg.total_remaining) || 0
     const totalPaid = totalOriginal - totalRemaining
     const progressPct = totalOriginal > 0
-      ? Math.round((totalPaid / totalOriginal) * 100)
+      ? Math.round(
+          (totalPaid / totalOriginal) * 100
+        )
       : 0
 
+    // Calendar days remaining
     const diffMs =
       new Date(targetDate).getTime() -
       new Date(date).getTime()
-    const daysRemaining = Math.max(
+    const calendarDaysRemaining = Math.max(
       Math.ceil(diffMs / (1000 * 60 * 60 * 24)), 1
     )
-    const dailyDebt = Math.round(
-      totalRemaining / daysRemaining
+
+    // Working days remaining (tomorrow → target)
+    const tomorrow = new Date(
+      date + 'T12:00:00+07:00'
+    )
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow
+      .toISOString()
+      .slice(0, 10)
+    const workingDaysRem = countWorkingDays(
+      tomorrowStr, targetDate, restDays
     )
 
-    const targetAmount =
-      dailyBudgetTotal + proratedMonthly + dailyDebt
-    const gap = income - targetAmount
+    // Daily debt portion
+    const dailyDebt = todayIsRestDay
+      ? 0
+      : Math.round(totalRemaining / workingDaysRem)
+
+    // Target: 0 on rest day
+    const targetAmount = todayIsRestDay
+      ? 0
+      : dailyBudgetTotal + proratedMonthly + dailyDebt
+    const gap = todayIsRestDay
+      ? income
+      : income - targetAmount
 
     const daily_target: DailyTarget = {
       target_amount: targetAmount,
       earned_today: income,
       gap,
-      is_on_track: gap >= 0,
+      is_on_track: todayIsRestDay
+        ? true
+        : gap >= 0,
+      is_rest_day: todayIsRestDay,
+      rest_days: restDays,
       breakdown: {
         daily_expense: dailyBudgetTotal,
         prorated_monthly: proratedMonthly,
@@ -210,10 +297,12 @@ route.get('/', async (c) => {
         daily_debt: dailyDebt,
         days_in_month: daysInMonth,
       },
-      days_remaining: daysRemaining,
+      days_remaining: calendarDaysRemaining,
+      working_days_remaining: workingDaysRem,
       target_date: targetDate,
     }
 
+    // Upcoming dues
     const dueRows = await queryDB(db,
       `SELECT ds.debt_id, d.platform,
              ds.due_date, ds.amount
@@ -221,13 +310,14 @@ route.get('/', async (c) => {
       JOIN debts d ON ds.debt_id = d.id
       WHERE ds.status = 'unpaid'
         AND ds.due_date <= date(?, '+7 days')
-        AND (d.is_deleted = 0 OR d.is_deleted IS NULL)
+        AND (d.is_deleted = 0
+             OR d.is_deleted IS NULL)
       ORDER BY ds.due_date ASC`,
       [date]
     )
 
-    const upcoming_dues: UpcomingDue[] = dueRows.map(
-      (row) => {
+    const upcoming_dues: UpcomingDue[] =
+      dueRows.map((row) => {
         const dueDate = String(row.due_date)
         const dMs =
           new Date(dueDate).getTime() -
@@ -243,8 +333,7 @@ route.get('/', async (c) => {
           days_until: daysUntil,
           urgency: getUrgency(daysUntil),
         }
-      }
-    )
+      })
 
     const debt_summary: DebtSummary = {
       total_original: totalOriginal,
@@ -268,15 +357,12 @@ route.get('/', async (c) => {
       data,
     })
   } catch (error) {
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: error instanceof Error
-          ? error.message
-          : 'Server error',
-      },
-      500
-    )
+    return c.json<ApiResponse<never>>({
+      success: false,
+      error: error instanceof Error
+        ? error.message
+        : 'Server error',
+    }, 500)
   }
 })
 
