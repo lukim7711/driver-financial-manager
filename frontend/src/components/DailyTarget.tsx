@@ -160,7 +160,7 @@ export function DailyTarget({
         {breakdown.proratedMonthly > 0 && (
           <div className="flex justify-between text-xs text-gray-500">
             <span>
-              {'\ud83c\udfe0'} Bulanan \u00f7{' '}
+              {'\ud83c\udfe0'} Bulanan {'\u00f7'}{' '}
               {breakdown.daysInMonth}
             </span>
             <span>
@@ -172,7 +172,7 @@ export function DailyTarget({
         )}
         <div className="flex justify-between text-xs text-gray-500">
           <span>
-            {'\ud83d\udcb3'} Hutang \u00f7{' '}
+            {'\ud83d\udcb3'} Hutang {'\u00f7'}{' '}
             {workingDaysRemaining} hari kerja
           </span>
           <span>

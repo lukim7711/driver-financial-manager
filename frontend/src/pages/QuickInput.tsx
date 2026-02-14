@@ -152,7 +152,7 @@ export function QuickInput() {
           {/* Note input */}
           <input
             type="text"
-            placeholder="\ud83d\udcdd Catatan (opsional)"
+            placeholder={'\ud83d\udcdd Catatan (opsional)'}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={100}
