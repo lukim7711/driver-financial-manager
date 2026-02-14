@@ -5,6 +5,7 @@ import { transactionRoute } from './routes/transaction'
 import { dashboardRoute } from './routes/dashboard'
 import { debtRoute } from './routes/debt'
 import { reportRoute } from './routes/report'
+import { reportMonthlyRoute } from './routes/report-monthly'
 import { ocrRoute } from './routes/ocr'
 import { settingsRoute } from './routes/settings'
 import { monthlyExpenseRoute } from './routes/monthly-expense'
@@ -44,7 +45,7 @@ app.get('/', (c) => {
     success: true,
     data: {
       service: 'Driver Financial Manager API',
-      version: '1.3.1',
+      version: '2.2.0',
       environment: c.env.ENVIRONMENT || 'development',
       timestamp: new Date().toISOString(),
     },
@@ -56,6 +57,7 @@ app.route('/api/transactions', transactionRoute)
 app.route('/api/dashboard', dashboardRoute)
 app.route('/api/debts', debtRoute)
 app.route('/api/report', reportRoute)
+app.route('/api/report', reportMonthlyRoute)
 app.route('/api/ocr', ocrRoute)
 app.route('/api/settings', settingsRoute)
 app.route('/api/monthly-expenses', monthlyExpenseRoute)

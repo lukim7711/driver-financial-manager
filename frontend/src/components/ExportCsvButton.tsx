@@ -17,10 +17,11 @@ interface DailyReportData {
 }
 
 interface ExportCsvButtonProps {
-  mode: 'daily' | 'weekly'
+  mode: 'daily' | 'weekly' | 'monthly'
   date: string
   weekStart?: string
   weekEnd?: string
+  month?: string
 }
 
 function addDays(dateStr: string, n: number): string {
@@ -29,11 +30,18 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+function getDaysInMonth(
+  year: number, mo: number
+): number {
+  return new Date(year, mo, 0).getDate()
+}
+
 export function ExportCsvButton({
   mode,
   date,
   weekStart,
   weekEnd,
+  month,
 }: ExportCsvButtonProps) {
   const toast = useToast()
   const [exporting, setExporting] = useState(false)
@@ -81,13 +89,42 @@ export function ExportCsvButton({
     toast.success(`${allTxs.length} transaksi diexport`)
   }
 
+  const handleExportMonthly = async () => {
+    const m = month ?? date.slice(0, 7)
+    const [yearStr, moStr] = m.split('-')
+    const year = parseInt(yearStr, 10)
+    const mo = parseInt(moStr, 10)
+    const days = getDaysInMonth(year, mo)
+
+    const allTxs: Transaction[] = []
+    for (let d = 1; d <= days; d++) {
+      const dayStr = `${m}-${String(d).padStart(2, '0')}`
+      const res = await apiClient<DailyReportData>(
+        `/api/report/daily?date=${dayStr}`
+      )
+      if (res.success) {
+        allTxs.push(...res.data.transactions)
+      }
+    }
+
+    if (allTxs.length === 0) {
+      toast.error('Tidak ada transaksi untuk diexport')
+      return
+    }
+    const csv = generateCsv(allTxs)
+    downloadCsv(csv, `laporan-bulanan-${m}.csv`)
+    toast.success(`${allTxs.length} transaksi diexport`)
+  }
+
   const handleExport = async () => {
     setExporting(true)
     try {
       if (mode === 'daily') {
         await handleExportDaily()
-      } else {
+      } else if (mode === 'weekly') {
         await handleExportWeekly()
+      } else {
+        await handleExportMonthly()
       }
     } catch {
       toast.error('Gagal export CSV')
