@@ -8,6 +8,7 @@ import { CategoryBar } from '../components/CategoryBar'
 import { TransactionItem } from '../components/TransactionItem'
 import { EditTransaction } from '../components/EditTransaction'
 import { WeeklyReport } from '../components/WeeklyReport'
+import { MonthlyReport } from '../components/MonthlyReport'
 import { ExportCsvButton } from '../components/ExportCsvButton'
 import { BottomNav } from '../components/BottomNav'
 
@@ -44,6 +45,8 @@ interface ReportData {
   transactions: Transaction[]
 }
 
+type TabType = 'daily' | 'weekly' | 'monthly'
+
 function shiftDate(dateStr: string, days: number): string {
   const d = new Date(dateStr)
   d.setDate(d.getDate() + days)
@@ -58,11 +61,16 @@ function getMonday(dateStr: string): string {
   return d.toISOString().slice(0, 10)
 }
 
+function getCurrentMonth(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
 export function Report() {
   const toast = useToast()
-  const [tab, setTab] = useState<'daily' | 'weekly'>(
-    'daily'
-  )
+  const [tab, setTab] = useState<TabType>('daily')
   const [date, setDate] = useState(todayISO())
   const [data, setData] = useState<ReportData | null>(
     null
@@ -71,6 +79,8 @@ export function Report() {
   const [editTx, setEditTx] = useState<Transaction | null>(
     null
   )
+
+  const currentMonth = getCurrentMonth()
 
   const fetchReport = useCallback(async (d: string) => {
     setLoading(true)
@@ -118,10 +128,11 @@ export function Report() {
             date={date}
             weekStart={weekStart}
             weekEnd={weekEnd}
+            month={currentMonth}
           />
         </div>
 
-        {/* Tab switcher */}
+        {/* Tab switcher — 3 tabs */}
         <div className="mt-3 flex rounded-lg bg-purple-700 p-1">
           <button
             type="button"
@@ -144,6 +155,17 @@ export function Report() {
             }`}
           >
             {'\ud83d\udcc6'} Mingguan
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('monthly')}
+            className={`tap-highlight-none flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
+              tab === 'monthly'
+                ? 'bg-white text-purple-700'
+                : 'text-purple-200'
+            }`}
+          >
+            {'\ud83d\uddd3\ufe0f'} Bulanan
           </button>
         </div>
 
@@ -180,6 +202,9 @@ export function Report() {
           </div>
         )}
       </div>
+
+      {/* Monthly tab */}
+      {tab === 'monthly' && <MonthlyReport />}
 
       {/* Weekly tab */}
       {tab === 'weekly' && (
